@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { Eye, EyeOff } from 'lucide-react'
+import { useAuth } from '../../context/AuthContext'
 
 const Login = () => {
   const navigate = useNavigate()
+  const { login } = useAuth() 
   const [formData, setFormData] = useState({
-    email: '',
+    username: '',
     password: '',
   })
   const [showPassword, setShowPassword] = useState(false)
@@ -20,54 +22,24 @@ const Login = () => {
     e.preventDefault()
     setError('')
 
-    if (!formData.email || !formData.password) {
+    if (!formData.username || !formData.password) {
       setError('Vui lòng nhập đầy đủ thông tin')
       return
     }
 
     setLoading(true)
 
-    // --- MOCK DATA (xóa khi backend chạy) ---
-    setTimeout(() => {
-    if (formData.email === 'dante@gmail.com' && formData.password === 'dante') {
-        // Giả lập đúng format response của API
-        const mockUser = {
-        id: 'mock-001',
-        username: 'testuser',
-        full_name: 'Dante Atreides',
-        email: 'dante@gmail.com',
-        phone: '0912345678',
-        dob: '2004-09-15',
+    try {
+          await login(formData.username, formData.password)
+          navigate('/') // Đăng nhập thành công ➔ Chuyển về trang chủ
+        } catch (err) {
+          // Lấy câu báo lỗi trả về từ GlobalExceptionHandler của Backend
+          const errorMsg = err.response?.data?.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại tài khoản/mật khẩu.'
+          setError(errorMsg)
+        } finally {
+          setLoading(false)
         }
-        localStorage.setItem('accessToken', 'mock-token-123')
-        localStorage.setItem('refreshToken', 'mock-refresh-123')
-        localStorage.setItem('mockUser', JSON.stringify(mockUser))
-        navigate('/')
-    } else {
-        setError('Email hoặc mật khẩu không đúng')
-    }
-    setLoading(false)
-    }, 1000)
-// --- HẾT MOCK DATA ---
-    // --- HẾT MOCK DATA ---
-
-    // --- API THẬT (bỏ comment khi backend chạy) ---
-    // try {
-    //   const res = await authService.login({
-    //     email: formData.email,
-    //     password: formData.password,
-    //   })
-    //   const { accessToken, refreshToken, user } = res.data.data
-    //   localStorage.setItem('accessToken', accessToken)
-    //   localStorage.setItem('refreshToken', refreshToken)
-    //   navigate('/')
-    // } catch (err) {
-    //   setError(err.response?.data?.error?.message || 'Đăng nhập thất bại')
-    // } finally {
-    //   setLoading(false)
-    // }
-    // --- HẾT API THẬT ---
-  }
+      }
 
   return (
     <div style={styles.container}>
@@ -88,12 +60,12 @@ const Login = () => {
 
           {/* Email */}
           <div style={styles.formGroup}>
-            <label style={styles.label}>Email</label>
+            <label style={styles.label}>Username</label>
             <input
-              type="email"
-              name="email"
-              placeholder="name@email.com"
-              value={formData.email}
+              type="text"
+              name="username"
+              placeholder="Nhập tên đăng nhập (ví dụ: admin)"
+              value={formData.username}
               onChange={handleChange}
               style={styles.input}
             />

@@ -19,11 +19,13 @@ function PrivateRoute({ children }) {
 
 function AdminRoute({ children }) {
   const { user } = useAuth()
-  return user?.role === 'ADMIN' ? children : <Navigate to="/" />
+  // Kiểm tra xem trong danh sách roles của user có vai trò 'ADMIN' hay không
+  const isAdmin = user?.roles?.some(role => role.name === 'ADMIN')
+  
+  return isAdmin ? children : <Navigate to="/" />
 }
 
 function AppRoutes() {
-  const { user } = useAuth()
   const hideNavbar = ['/login', '/register'].includes(window.location.pathname)
 
   return (

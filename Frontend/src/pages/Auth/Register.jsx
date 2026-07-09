@@ -1,9 +1,12 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { Eye, EyeOff } from 'lucide-react'
+import authService from '../../services/authService'
+import { useAuth } from '../../context/AuthContext'
 
 const Register = () => {
   const navigate = useNavigate()
+  const { login } = useAuth()
   const [formData, setFormData] = useState({
     username: '',
     fullName: '',
@@ -26,25 +29,64 @@ const Register = () => {
     e.preventDefault()
     setError('')
 
+    // 1. Kiểm tra rỗng
     if (!formData.username || !formData.fullName || !formData.email ||
       !formData.phone || !formData.dob || !formData.password || !formData.confirmPassword) {
       setError('Vui lòng nhập đầy đủ thông tin')
       return
     }
+
+    // 2. Validate độ dài Tên đăng nhập
+    if (formData.username.trim().length < 3) {
+      setError('Tên đăng nhập phải chứa ít nhất 3 ký tự')
+      return
+    }
+
+    // 3. Validate định dạng Email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(formData.email)) {
+      setError('Email không đúng định dạng (Ví dụ: name@example.com)')
+      return
+    }
+
+    // 4. Validate Số điện thoại (chỉ chứa số, dài 10-11 ký tự)
+    const phoneRegex = /^[0-9]{10,11}$/
+    if (!phoneRegex.test(formData.phone)) {
+      setError('Số điện thoại phải chứa 10 hoặc 11 chữ số')
+      return
+    }
+
+    // 5. Validate tuổi (phải đủ 18 tuổi trở lên theo quy định của hệ thống)
+    const birthDate = new Date(formData.dob)
+    const today = new Date()
+    let age = today.getFullYear() - birthDate.getFullYear()
+    const monthDiff = today.getMonth() - birthDate.getMonth()
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--
+    }
+    if (age < 18) {
+      setError('Bạn phải từ 18 tuổi trở lên để đăng ký tài khoản')
+      return
+    }
+
+    // 6. Validate khớp mật khẩu
     if (formData.password !== formData.confirmPassword) {
       setError('Mật khẩu xác nhận không khớp')
       return
     }
-    if (formData.password.length < 6) {
-      setError('Mật khẩu phải có ít nhất 6 ký tự')
+
+    // 7. Validate độ dài mật khẩu
+    if (formData.password.length < 8) {
+      setError('Mật khẩu phải có ít nhất 8 ký tự')
       return
     }
 
     setLoading(true)
 
-    // --- MOCK DATA (xóa khi backend chạy) ---
-    setTimeout(() => {
-      console.log('Data gửi lên API:', {
+     // --- GỌI API ĐĂNG KÝ VÀ ĐĂNG NHẬP THẬT ---
+    try {
+      // 1. Tạo tài khoản trên database
+      await authService.register({
         username: formData.username,
         full_name: formData.fullName,
         email: formData.email,
@@ -52,13 +94,17 @@ const Register = () => {
         phone: formData.phone,
         dob: formData.dob,
       })
-      localStorage.setItem('accessToken', 'mock-token-123')
-      navigate('/')
+      // 2. Đăng ký thành công ➔ Gọi login tự động để lấy token
+      await login(formData.username, formData.password)
+      navigate('/') // Chuyển về trang chủ
+    } catch (err) {
+      // Lấy câu báo lỗi chi tiết từ backend gửi về
+      const errorMsg = err.response?.data?.message || 'Đăng ký thất bại. Vui lòng thử lại.'
+      setError(errorMsg)
+    } finally {
       setLoading(false)
-    }, 1000)
-    // --- HẾT MOCK DATA ---
+    }
   }
-
   return (
     <div style={styles.container}>
       <div style={styles.card}>

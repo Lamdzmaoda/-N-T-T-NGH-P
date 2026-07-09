@@ -1,6 +1,6 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
-import { Plane, MapPin, Calendar, Bell, LogOut } from 'lucide-react'
+import { Plane, MapPin, Calendar, Bell, LogOut, Settings } from 'lucide-react'
 
 const Navbar = () => {
   const { user, logout } = useAuth()
@@ -35,6 +35,11 @@ const Navbar = () => {
           {user && (
             <Link to="/trips/create" style={{ ...styles.link, ...(isActive('/trips/create') ? styles.linkActive : {}) }}>
               <Calendar size={14} /> Tạo lịch trình
+            </Link>
+          )}
+           {user && user.roles?.some(role => role.name === 'ADMIN') && (
+            <Link to="/admin" style={{ ...styles.link, ...(isActive('/admin') ? styles.linkActive : {}) }}>
+              <Settings size={14} /> Quản trị
             </Link>
           )}
         </div>

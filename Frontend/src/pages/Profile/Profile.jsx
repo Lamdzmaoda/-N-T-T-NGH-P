@@ -1,54 +1,74 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import {
-  Edit, Lock, Plane, Heart, Star, MapPin,
-  Calendar, Mail, Phone, Save, X
+  Edit, Lock, Plane, Heart, MapPin,
+  Calendar, Mail, Phone, Save, X, Loader2
 } from 'lucide-react'
-
-// Mock data lịch sử chuyến đi — sau này thay bằng GET /api/trips
-const MOCK_TRIPS = [
-  { id: 't1', title: 'Hà Nội 3 ngày 2 đêm', start_date: '2026-07-15', end_date: '2026-07-17', status: 'planning', budget: 'Trung bình' },
-  { id: 't2', title: 'Đà Nẵng 4 ngày 3 đêm', start_date: '2026-06-01', end_date: '2026-06-04', status: 'completed', budget: 'Cao' },
-  { id: 't3', title: 'Đà Lạt 2 ngày 1 đêm', start_date: '2026-08-20', end_date: '2026-08-21', status: 'planning', budget: 'Thấp' },
-]
-
-// Mock data địa điểm đã thích — sau này thay bằng GET /api/users/likes
-const MOCK_LIKED = [
-  { id: 'p1', name: 'Hồ Gươm', city: 'Hà Nội', category: 'Văn hóa' },
-  { id: 'p2', name: 'Phở Bát Đàn', city: 'Hà Nội', category: 'Ẩm thực' },
-  { id: 'p3', name: 'Bãi biển Mỹ Khê', city: 'Đà Nẵng', category: 'Thiên nhiên' },
-]
+import tripService from '../../services/tripService'
+import placeService from '../../services/placeService'
 
 const STATUS_LABEL = {
-  planning: { text: 'Đang lên kế hoạch', bg: '#E6F1FB', color: '#185FA5' },
-  ongoing: { text: 'Đang đi', bg: '#FAEEDA', color: '#854F0B' },
-  completed: { text: 'Hoàn thành', bg: '#EAF3DE', color: '#3B6D11' },
+  PLANNING: { text: 'Đang lên kế hoạch', bg: '#E6F1FB', color: '#185FA5' },
+  ONGOING: { text: 'Đang đi', bg: '#FAEEDA', color: '#854F0B' },
+  COMPLETED: { text: 'Hoàn thành', bg: '#EAF3DE', color: '#3B6D11' },
 }
 
 const Profile = () => {
   const { user, setUser } = useAuth()
   const navigate = useNavigate()
+  
   const [editing, setEditing] = useState(false)
   const [changingPw, setChangingPw] = useState(false)
 
+  // Form State
   const [form, setForm] = useState({
     full_name: user?.full_name || '',
     phone: user?.phone || '',
     bio: user?.bio || '',
   })
 
+  // Dữ liệu thực tế từ Database
+  const [trips, setTrips] = useState([])
+  const [likedPlaces, setLikedPlaces] = useState([])
+  const [loadingData, setLoadingData] = useState(false)
+
   const [pwForm, setPwForm] = useState({ old_password: '', new_password: '', confirm: '' })
   const [pwError, setPwError] = useState('')
 
+  // 1. Tải danh sách chuyến đi và địa điểm đã thích của người dùng
+  const loadProfileData = async () => {
+    if (!user) return
+    try {
+      setLoadingData(true)
+      
+      // A. Gọi API lấy danh sách Trips
+      const tripsRes = await tripService.getTrips()
+      setTrips(tripsRes.data.result || [])
+
+      // B. Gọi API lấy tất cả địa điểm và lọc địa điểm có liked === true
+      const placesRes = await placeService.getPlaces({ page: 0, size: 100 })
+      const allPlaces = placesRes.data.result?.content || []
+      const liked = allPlaces.filter(p => p.liked || p.isLiked)
+      setLikedPlaces(liked)
+
+    } catch (err) {
+      console.error('Lỗi tải dữ liệu cá nhân:', err)
+    } finally {
+      setLoadingData(false)
+    }
+  }
+
+  useEffect(() => {
+    loadProfileData()
+  }, [user])
+
   const handleSaveProfile = (e) => {
     e.preventDefault()
-    // --- MOCK: cập nhật local, sau này gọi PUT /api/users/profile ---
+    // --- Mock cập nhật local ---
     const updated = { ...user, ...form }
-    localStorage.setItem('mockUser', JSON.stringify(updated))
     if (setUser) setUser(updated)
     setEditing(false)
-    // --- HẾT MOCK ---
   }
 
   const handleChangePassword = (e) => {
@@ -66,11 +86,9 @@ const Profile = () => {
       setPwError('Mật khẩu mới phải có ít nhất 6 ký tự')
       return
     }
-    // --- MOCK: sau này gọi PATCH /api/users/password ---
     alert('Đổi mật khẩu thành công (mock)')
     setChangingPw(false)
     setPwForm({ old_password: '', new_password: '', confirm: '' })
-    // --- HẾT MOCK ---
   }
 
   if (!user) return null
@@ -144,7 +162,7 @@ const Profile = () => {
           </div>
         </div>
 
-        {/* ĐỔI MẬT KHẨU MODAL INLINE */}
+        {/* ĐỔI MẬT KHẨU */}
         {changingPw && (
           <div style={styles.pwCard}>
             <h3 style={styles.pwTitle}>Đổi mật khẩu</h3>
@@ -187,78 +205,86 @@ const Profile = () => {
           </div>
         )}
 
-        {/* COUNTERS */}
+        {/* BỘ ĐẾM THỐNG KÊ THẬT */}
         <div style={styles.counters}>
           <div style={styles.counterItem}>
-            <div style={{ ...styles.counterNum, color: '#185FA5' }}>{MOCK_TRIPS.length}</div>
+            <div style={{ ...styles.counterNum, color: '#185FA5' }}>{trips.length}</div>
             <div style={styles.counterLbl}>Chuyến đi</div>
           </div>
           <div style={styles.counterItem}>
-            <div style={{ ...styles.counterNum, color: '#A32D2D' }}>{MOCK_LIKED.length}</div>
+            <div style={{ ...styles.counterNum, color: '#A32D2D' }}>{likedPlaces.length}</div>
             <div style={styles.counterLbl}>Yêu thích</div>
           </div>
-          <div style={styles.counterItem}>
-            <div style={{ ...styles.counterNum, color: '#854F0B' }}>2</div>
-            <div style={styles.counterLbl}>Đánh giá</div>
-          </div>
         </div>
 
-        {/* BODY 2 COLUMN */}
-        <div style={styles.body}>
-
-          {/* TRIPS */}
-          <div style={styles.col}>
-            <div style={styles.colHeader}>
-              <span style={styles.colTitle}>Chuyến đi gần đây</span>
-              <button style={styles.seeAllBtn} onClick={() => navigate('/trips/create')}>
-                + Tạo mới
-              </button>
-            </div>
-            {MOCK_TRIPS.map(trip => {
-              const st = STATUS_LABEL[trip.status]
-              return (
-                <div
-                  key={trip.id}
-                  style={styles.tripItem}
-                  onClick={() => navigate(`/trips/${trip.id}`)}
-                >
-                  <div style={styles.tripIcon}><Plane size={16} color="#185FA5" /></div>
-                  <div style={{ flex: 1 }}>
-                    <div style={styles.tripTitle}>{trip.title}</div>
-                    <div style={styles.tripMeta}>
-                      <Calendar size={11} /> {trip.start_date} - {trip.end_date} · {trip.budget}
-                    </div>
-                  </div>
-                  <span style={{ ...styles.statusBadge, backgroundColor: st.bg, color: st.color }}>
-                    {st.text}
-                  </span>
-                </div>
-              )
-            })}
+        {/* 2 CỘT HIỂN THỊ DỮ LIỆU */}
+        {loadingData ? (
+          <div style={styles.loadingWrap}>
+            <Loader2 size={36} color="#185FA5" className="animate-spin" />
+            <p style={{ marginTop: '12px', color: '#666', fontSize: '13px' }}>Đang tải dữ liệu chuyến đi...</p>
           </div>
-
-          {/* LIKED PLACES */}
-          <div style={styles.col}>
-            <div style={styles.colHeader}>
-              <span style={styles.colTitle}>Địa điểm đã thích</span>
-            </div>
-            {MOCK_LIKED.map(place => (
-              <div
-                key={place.id}
-                style={styles.likeItem}
-                onClick={() => navigate(`/places/${place.id}`)}
-              >
-                <div style={styles.likeIcon}><MapPin size={14} color="#185FA5" /></div>
-                <div style={{ flex: 1 }}>
-                  <div style={styles.likeName}>{place.name}</div>
-                  <div style={styles.likeMeta}>{place.city} · {place.category}</div>
-                </div>
-                <Heart size={14} fill="#A32D2D" color="#A32D2D" />
+        ) : (
+          <div style={styles.body}>
+            {/* CỘT CHUYẾN ĐI */}
+            <div style={styles.col}>
+              <div style={styles.colHeader}>
+                <span style={styles.colTitle}>Chuyến đi của tôi</span>
+                <button style={styles.seeAllBtn} onClick={() => navigate('/trips/create')}>
+                  + Tạo chuyến đi AI
+                </button>
               </div>
-            ))}
-          </div>
+              {trips.map(trip => {
+                const statusType = trip.status || 'PLANNING'
+                const st = STATUS_LABEL[statusType] || STATUS_LABEL.PLANNING
+                return (
+                  <div
+                    key={trip.id}
+                    style={styles.tripItem}
+                    onClick={() => navigate(`/trips/${trip.id}`)}
+                  >
+                    <div style={styles.tripIcon}><Plane size={16} color="#185FA5" /></div>
+                    <div style={{ flex: 1 }}>
+                      <div style={styles.tripTitle}>{trip.title}</div>
+                      <div style={styles.tripMeta}>
+                        <Calendar size={11} /> {trip.start_date} - {trip.end_date}
+                      </div>
+                    </div>
+                    <span style={{ ...styles.statusBadge, backgroundColor: st.bg, color: st.color }}>
+                      {st.text}
+                    </span>
+                  </div>
+                )}
+              )}
+              {trips.length === 0 && (
+                <div style={styles.emptyText}>Bạn chưa có lịch trình du lịch nào. Hãy tạo một chuyến đi mới!</div>
+              )}
+            </div>
 
-        </div>
+            {/* CỘT ĐỊA ĐIỂM ĐÃ THÍCH */}
+            <div style={styles.col}>
+              <div style={styles.colHeader}>
+                <span style={styles.colTitle}>Địa điểm đã thích</span>
+              </div>
+              {likedPlaces.map(place => (
+                <div
+                  key={place.id}
+                  style={styles.likeItem}
+                  onClick={() => navigate(`/places/${place.id}`)}
+                >
+                  <div style={styles.likeIcon}><MapPin size={14} color="#185FA5" /></div>
+                  <div style={{ flex: 1 }}>
+                    <div style={styles.likeName}>{place.name}</div>
+                    <div style={styles.likeMeta}>{place.address?.substring(0, 30)}...</div>
+                  </div>
+                  <Heart size={14} fill="#A32D2D" color="#A32D2D" />
+                </div>
+              ))}
+              {likedPlaces.length === 0 && (
+                <div style={styles.emptyText}>Danh sách yêu thích trống.</div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -337,13 +363,14 @@ const styles = {
   },
 
   counters: {
-    display: 'grid', gridTemplateColumns: 'repeat(3,1fr)',
+    display: 'grid', gridTemplateColumns: 'repeat(2,1fr)',
     backgroundColor: '#fff', borderRadius: '14px', border: '1px solid #eee',
   },
   counterItem: { textAlign: 'center', padding: '16px', borderRight: '1px solid #eee' },
   counterNum: { fontSize: '22px', fontWeight: '700', marginBottom: '3px' },
   counterLbl: { fontSize: '11px', color: '#999' },
 
+  loadingWrap: { display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '40px 0' },
   body: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' },
   col: {
     backgroundColor: '#fff', borderRadius: '14px', border: '1px solid #eee',
@@ -389,6 +416,7 @@ const styles = {
   },
   likeName: { fontSize: '12px', fontWeight: '600', marginBottom: '2px', color: '#1a1a18' },
   likeMeta: { fontSize: '10px', color: '#999' },
+  emptyText: { fontSize: '12px', color: '#999', fontStyle: 'italic', padding: '12px 0', textAlign: 'center' },
 }
 
 export default Profile

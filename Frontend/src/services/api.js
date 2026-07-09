@@ -19,9 +19,13 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('accessToken')
-      localStorage.removeItem('refreshToken')
-      window.location.href = '/login'
+      // Nếu đang ở trang đăng nhập hoặc đăng ký, không tự động chuyển hướng để hiển thị thông báo lỗi
+      const isAuthPage = ['/login', '/register'].includes(window.location.pathname)
+      if (!isAuthPage) {
+        localStorage.removeItem('accessToken')
+        localStorage.removeItem('refreshToken')
+        window.location.href = '/login'
+      }
     }
     return Promise.reject(error)
   }
