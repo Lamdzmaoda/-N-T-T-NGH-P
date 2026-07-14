@@ -11,6 +11,7 @@ import CreateTrip from './pages/Trips/CreateTrip'
 import TripDetail from './pages/Trips/TripDetail'
 import Profile from './pages/Profile/Profile'
 import Dashboard from './pages/Admin/Dashboard'
+import Notifications from './pages/Notifications/Notifications'
 
 function PrivateRoute({ children }) {
   const { user } = useAuth()
@@ -45,6 +46,9 @@ function AppRoutes() {
         } />
         <Route path="/profile" element={
           <PrivateRoute><Profile /></PrivateRoute>
+        } />
+        <Route path="/notifications" element={
+          <PrivateRoute><Notifications /></PrivateRoute>
         } />
         <Route path="/admin" element={
           <AdminRoute><Dashboard /></AdminRoute>

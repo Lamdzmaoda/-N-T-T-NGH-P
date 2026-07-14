@@ -1,11 +1,64 @@
+import { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
-import { Plane, MapPin, Calendar, Bell, LogOut, Settings } from 'lucide-react'
+import { Plane, MapPin, Calendar, Bell, LogOut, Settings, Compass } from 'lucide-react'
+import notificationService from '../../services/notificationService'
+import tripService from '../../services/tripService'
 
 const Navbar = () => {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+  const [unreadCount, setUnreadCount] = useState(0)
+  const [latestTripId, setLatestTripId] = useState(null)
+
+  // Tải số lượng thông báo chưa đọc
+  useEffect(() => {
+    if (!user) return
+
+    const fetchUnreadCount = async () => {
+      try {
+        const res = await notificationService.getUnreadCount()
+        setUnreadCount(res.data.result || 0)
+      } catch (err) {
+        console.warn('Lỗi lấy số thông báo chưa đọc')
+      }
+    }
+
+    fetchUnreadCount()
+    const interval = setInterval(fetchUnreadCount, 15000) // Cập nhật sau mỗi 15 giây
+    return () => clearInterval(interval)
+  }, [user, location.pathname])
+
+  // Tải chuyến đi mới nhất đang lên kế hoạch
+  useEffect(() => {
+    if (!user) {
+      setLatestTripId(null)
+      return
+    }
+
+    const fetchLatestTrip = async () => {
+      try {
+        const res = await tripService.getTrips()
+        const tripsList = res.data.result || []
+        const ongoingTrips = tripsList.filter(t => t.status === 'ONGOING')
+        if (ongoingTrips.length > 0) {
+          const sorted = [...ongoingTrips].sort((a, b) => {
+            const timeA = new Date(a.createAt || a.create_at || 0).getTime()
+            const timeB = new Date(b.createAt || b.create_at || 0).getTime()
+            return timeB - timeA
+          })
+          setLatestTripId(sorted[0].id)
+        } else {
+          setLatestTripId(null)
+        }
+      } catch (err) {
+        console.warn('Lỗi lấy chuyến đi gần nhất:', err)
+      }
+    }
+
+    fetchLatestTrip()
+  }, [user, location.pathname])
 
   const handleLogout = async () => {
     await logout()
@@ -32,6 +85,11 @@ const Navbar = () => {
           <Link to="/places" style={{ ...styles.link, ...(isActive('/places') ? styles.linkActive : {}) }}>
             <MapPin size={14} /> Địa điểm
           </Link>
+          {user && latestTripId && (
+            <Link to={`/trips/${latestTripId}`} style={{ ...styles.link, ...(isActive(`/trips/${latestTripId}`) ? styles.linkActive : {}) }}>
+              <Compass size={14} /> Chuyến đi hiện tại
+            </Link>
+          )}
           {user && (
             <Link to="/trips/create" style={{ ...styles.link, ...(isActive('/trips/create') ? styles.linkActive : {}) }}>
               <Calendar size={14} /> Tạo lịch trình
@@ -50,6 +108,9 @@ const Navbar = () => {
             <>
               <Link to="/notifications" style={styles.iconBtn}>
                 <Bell size={18} color="#555" />
+                {unreadCount > 0 && (
+                  <span style={styles.badge}>{unreadCount > 9 ? '9+' : unreadCount}</span>
+                )}
               </Link>
               <Link to="/profile" style={styles.userBtn}>
                 <div style={styles.avatar}>
@@ -140,6 +201,23 @@ const styles = {
     justifyContent: 'center',
     textDecoration: 'none',
     backgroundColor: '#f5f5f5',
+    position: 'relative',
+  },
+  badge: {
+    position: 'absolute',
+    top: '-4px',
+    right: '-4px',
+    backgroundColor: '#A32D2D',
+    color: '#fff',
+    fontSize: '9px',
+    fontWeight: '700',
+    borderRadius: '50%',
+    width: '16px',
+    height: '16px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    border: '2px solid #fff',
   },
   userBtn: {
     display: 'flex',

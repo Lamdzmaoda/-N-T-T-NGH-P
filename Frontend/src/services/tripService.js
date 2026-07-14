@@ -18,6 +18,13 @@ const tripService = {
 
   // 6. Xóa hoạt động khỏi lịch trình
   deleteItineraryItem: (id) => api.delete(`/trips/itinerary/${id}`),
+
+  // 7. Bắt đầu chuyến đi (Kích hoạt trạng thái ONGOING)
+  startTrip: (id) => api.put(`/trips/${id}/start`),
+
+  // 8. Lấy thông tin chỉ đường, bản đồ GPS chi tiết cho chuyến đi đang diễn ra
+  getTripNavigation: (id) => api.get(`/trips/${id}/navigation`),
 }
 
 export default tripService
+

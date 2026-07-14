@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Star, MapPin, Clock, Ticket, Heart, Share2, Plus, Trash2, Loader2 } from 'lucide-react'
+import { ArrowLeft, Star, MapPin, Clock, Ticket, Heart, Share2, Plus, Trash2, Loader2, Calendar, CreditCard } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import placeService from '../../services/placeService'
+import bookingService from '../../services/bookingService'
 
 const PlaceDetail = () => {
   const { id } = useParams()
@@ -16,6 +17,18 @@ const PlaceDetail = () => {
 
   const [reviewText, setReviewText] = useState('')
   const [rating, setRating] = useState(5)
+
+  // --- STATE PHỤC VỤ ĐẶT CHỖ (BOOKING) & THANH TOÁN (PAYMENT) ---
+  const [checkIn, setCheckIn] = useState('')
+  const [checkOut, setCheckOut] = useState('')
+  const [bookingNote, setBookingNote] = useState('')
+  const [isBookingLoading, setIsBookingLoading] = useState(false)
+  const [showPaymentModal, setShowPaymentModal] = useState(false)
+  const [createdBooking, setCreatedBooking] = useState(null)
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('MOMO')
+  const [isPaymentLoading, setIsPaymentLoading] = useState(false)
+  const [paymentSuccess, setPaymentSuccess] = useState(false)
+  const [paymentResult, setPaymentResult] = useState(null)
 
   // 1. Tải thông tin chi tiết địa điểm và đánh giá từ Database
   const loadPlaceData = async () => {
@@ -94,6 +107,85 @@ const PlaceDetail = () => {
     } catch (err) {
       console.error(err)
       alert('Xóa đánh giá thất bại.')
+    }
+  }
+
+  // --- HÀM HỖ TRỢ LẤY GIÁ TRỊ TẦM GIÁ ---
+  const getBasePrice = () => {
+    if (!place?.price_range) return 250000 // Mặc định 250,000đ
+    const numbers = place.price_range.replace(/[^0-9]/g, '')
+    if (numbers) {
+      const parsed = parseInt(numbers, 10)
+      if (parsed > 1000) return parsed // Ví dụ: "500000" -> 500,000đ
+      return parsed * 100000 // Ví dụ: "$3" -> 300,000đ
+    }
+    return 250000
+  }
+
+  // --- XỬ LÝ ĐẶT CHỖ (BOOKING) ---
+  const handleBookingSubmit = async (e) => {
+    e.preventDefault()
+    if (!user) {
+      alert('Vui lòng đăng nhập để thực hiện đặt chỗ!')
+      navigate('/login')
+      return
+    }
+    if (!checkIn || !checkOut) {
+      alert('Vui lòng chọn đầy đủ ngày nhận và ngày trả!')
+      return
+    }
+    if (new Date(checkIn) > new Date(checkOut)) {
+      alert('Ngày nhận không thể sau ngày trả!')
+      return
+    }
+
+    setIsBookingLoading(true)
+    try {
+      const days = Math.ceil((new Date(checkOut) - new Date(checkIn)) / (1000 * 60 * 60 * 24)) || 1
+      const base = getBasePrice()
+      const total = base * days
+
+      const payload = {
+        placeId: id,
+        checkIn,
+        checkOut,
+        totalPrice: total,
+        note: bookingNote
+      }
+
+      const res = await bookingService.createBooking(payload)
+      setCreatedBooking(res.data.result)
+      setPaymentSuccess(false)
+      setShowPaymentModal(true)
+    } catch (err) {
+      console.error(err)
+      alert(err.response?.data?.message || 'Có lỗi xảy ra khi tạo đặt chỗ!')
+    } finally {
+      setIsBookingLoading(false)
+    }
+  }
+
+  // --- XỬ LÝ THANH TOÁN (PAYMENT) ---
+  const handlePaymentSubmit = async (e) => {
+    e.preventDefault()
+    if (!createdBooking) return
+    setIsPaymentLoading(true)
+    try {
+      const payload = {
+        bookingId: createdBooking.id,
+        method: selectedPaymentMethod
+      }
+      const res = await bookingService.processPayment(payload)
+      setPaymentResult(res.data.result)
+      setPaymentSuccess(true)
+      
+      // Load lại thông tin địa điểm sau khi đặt chỗ thành công để cập nhật slots
+      loadPlaceData()
+    } catch (err) {
+      console.error(err)
+      alert(err.response?.data?.message || 'Thanh toán thất bại, vui lòng thử lại!')
+    } finally {
+      setIsPaymentLoading(false)
     }
   }
 
@@ -278,6 +370,62 @@ const PlaceDetail = () => {
 
         {/* MAP SIDEBAR COLUMN */}
         <div style={styles.sidebar}>
+          {/* BOOKING CARD */}
+          <div style={styles.bookingCard}>
+            <h3 style={styles.bookingCardTitle}>Đặt chỗ / Chọn Slot</h3>
+            {place.max_slots !== null && (
+              <div style={styles.bookingSlotsInfo}>
+                Số slot khả dụng: <strong>{place.max_slots}</strong>
+              </div>
+            )}
+            <form onSubmit={handleBookingSubmit} style={styles.bookingForm}>
+              <div style={styles.bookingFormGroup}>
+                <label style={styles.bookingLabel}><Calendar size={12} /> Ngày nhận</label>
+                <input
+                  type="date"
+                  style={styles.bookingInput}
+                  value={checkIn}
+                  onChange={e => setCheckIn(e.target.value)}
+                  required
+                />
+              </div>
+              <div style={styles.bookingFormGroup}>
+                <label style={styles.bookingLabel}><Calendar size={12} /> Ngày trả</label>
+                <input
+                  type="date"
+                  style={styles.bookingInput}
+                  value={checkOut}
+                  onChange={e => setCheckOut(e.target.value)}
+                  required
+                />
+              </div>
+              <div style={styles.bookingFormGroup}>
+                <label style={styles.bookingLabel}>Yêu cầu đặc biệt</label>
+                <textarea
+                  style={styles.bookingTextarea}
+                  placeholder="Ghi chú thêm (Ví dụ: phòng tầng cao, bàn view cửa sổ...)"
+                  value={bookingNote}
+                  onChange={e => setBookingNote(e.target.value)}
+                  rows={2}
+                />
+              </div>
+              
+              {/* Hiển thị tổng tiền tạm tính */}
+              {checkIn && checkOut && new Date(checkIn) <= new Date(checkOut) && (
+                <div style={styles.bookingPriceRow}>
+                  <span>Tạm tính ({Math.ceil((new Date(checkOut) - new Date(checkIn)) / (1000 * 60 * 60 * 24)) || 1} ngày):</span>
+                  <strong style={styles.bookingPriceVal}>
+                    {((Math.ceil((new Date(checkOut) - new Date(checkIn)) / (1000 * 60 * 60 * 24)) || 1) * getBasePrice()).toLocaleString('vi-VN')} VNĐ
+                  </strong>
+                </div>
+              )}
+
+              <button type="submit" style={styles.bookingSubmitBtn} disabled={isBookingLoading}>
+                {isBookingLoading ? 'Đang xử lý...' : 'Tiến hành Đặt chỗ'}
+              </button>
+            </form>
+          </div>
+
           <div style={styles.mapBox}>
             <iframe
               width="100%"
@@ -296,6 +444,107 @@ const PlaceDetail = () => {
           </div>
         </div>
       </div>
+
+      {/* -------------------- PAYMENT MODAL -------------------- */}
+      {showPaymentModal && createdBooking && (
+        <div style={styles.modalOverlay}>
+          <div style={styles.modalCard}>
+            <div style={styles.modalHeader}>
+              <h3 style={styles.modalTitle}>Thanh toán Hóa đơn</h3>
+              {!paymentSuccess && (
+                <button style={styles.btnCloseModal} onClick={() => setShowPaymentModal(false)}>
+                  <X size={18} />
+                </button>
+              )}
+            </div>
+
+            {!paymentSuccess ? (
+              <form onSubmit={handlePaymentSubmit}>
+                <div style={styles.paymentSummaryCard}>
+                  <div style={styles.summaryRow}>
+                    <span>Địa điểm:</span>
+                    <strong>{place.name}</strong>
+                  </div>
+                  <div style={styles.summaryRow}>
+                    <span>Thời gian:</span>
+                    <span>{createdBooking.checkIn} đến {createdBooking.checkOut}</span>
+                  </div>
+                  <div style={styles.summaryTotalRow}>
+                    <span>Tổng thanh toán:</span>
+                    <strong style={styles.totalPriceText}>
+                      {createdBooking.totalPrice.toLocaleString('vi-VN')} VNĐ
+                    </strong>
+                  </div>
+                </div>
+
+                <div style={styles.paymentMethodGroup}>
+                  <label style={styles.modalLabel}>Chọn phương thức thanh toán</label>
+                  <div style={styles.paymentMethodsGrid}>
+                    {[
+                      { id: 'MOMO', name: 'Ví MoMo', icon: '🌸' },
+                      { id: 'VNPAY', name: 'Cổng VNPAY', icon: '💎' },
+                      { id: 'CARD', name: 'Thẻ Quốc tế', icon: '💳' }
+                    ].map(method => (
+                      <div
+                        key={method.id}
+                        style={{
+                          ...styles.paymentMethodCard,
+                          ...(selectedPaymentMethod === method.id ? styles.paymentMethodCardActive : {})
+                        }}
+                        onClick={() => setSelectedPaymentMethod(method.id)}
+                      >
+                        <span style={styles.paymentMethodIcon}>{method.icon}</span>
+                        <span style={styles.paymentMethodName}>{method.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <button type="submit" style={styles.paymentConfirmBtn} disabled={isPaymentLoading}>
+                  {isPaymentLoading ? 'Đang kết nối cổng thanh toán...' : 'Xác nhận Thanh toán'}
+                </button>
+              </form>
+            ) : (
+              <div style={styles.paymentSuccessContainer}>
+                <div style={styles.successIcon}>✓</div>
+                <h4 style={styles.successTitle}>Thanh toán thành công!</h4>
+                <p style={styles.successDesc}>Giao dịch đặt chỗ của bạn đã được xác nhận.</p>
+                <div style={styles.successDetailsCard}>
+                  <div style={styles.successDetailRow}>
+                    <span>Mã hóa đơn:</span>
+                    <strong>{paymentResult?.id?.substring(0,8)}...</strong>
+                  </div>
+                  <div style={styles.successDetailRow}>
+                    <span>Mã giao dịch:</span>
+                    <strong>{paymentResult?.transactionId || 'MOCK-TXN-12345'}</strong>
+                  </div>
+                  <div style={styles.successDetailRow}>
+                    <span>Phương thức:</span>
+                    <strong>{paymentResult?.method}</strong>
+                  </div>
+                  <div style={styles.successDetailRow}>
+                    <span>Số tiền:</span>
+                    <strong style={{ color: '#3B6D11' }}>
+                      {paymentResult?.amount?.toLocaleString('vi-VN')} VNĐ
+                    </strong>
+                  </div>
+                </div>
+                <button
+                  style={styles.paymentCloseBtn}
+                  onClick={() => {
+                    setShowPaymentModal(false)
+                    setCheckIn('')
+                    setCheckOut('')
+                    setBookingNote('')
+                  }}
+                >
+                  Hoàn tất
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -466,6 +715,125 @@ const styles = {
   mapLink: {
     fontSize: '12px', color: '#185FA5',
     textDecoration: 'none', fontWeight: '500',
+  },
+
+  // --- BOOKING CARD STYLES ---
+  bookingCard: {
+    backgroundColor: '#fff', borderRadius: '14px',
+    border: '1px solid #eee', padding: '16px',
+    boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
+    marginBottom: '12px',
+  },
+  bookingCardTitle: { fontSize: '15px', fontWeight: '700', color: '#1a1a18', marginBottom: '8px' },
+  bookingSlotsInfo: {
+    fontSize: '11px', color: '#854F0B', backgroundColor: '#FDF2E2',
+    padding: '6px 10px', borderRadius: '6px', marginBottom: '12px',
+  },
+  bookingForm: { display: 'flex', flexDirection: 'column', gap: '10px' },
+  bookingFormGroup: { display: 'flex', flexDirection: 'column', gap: '4px' },
+  bookingLabel: { fontSize: '11px', fontWeight: '600', color: '#555', display: 'flex', alignItems: 'center', gap: '4px' },
+  bookingInput: {
+    padding: '8px 10px', border: '1px solid #ddd', borderRadius: '6px',
+    fontSize: '12px', outline: 'none', fontFamily: 'inherit', color: '#333',
+    boxSizing: 'border-box', width: '100%',
+  },
+  bookingTextarea: {
+    padding: '8px 10px', border: '1px solid #ddd', borderRadius: '6px',
+    fontSize: '12px', outline: 'none', fontFamily: 'inherit', resize: 'none',
+    boxSizing: 'border-box', width: '100%', color: '#333',
+  },
+  bookingPriceRow: {
+    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+    padding: '8px 0', borderTop: '1px dashed #eee', marginTop: '4px',
+    fontSize: '12px', color: '#666',
+  },
+  bookingPriceVal: { color: '#185FA5', fontSize: '13px', fontWeight: '700' },
+  bookingSubmitBtn: {
+    padding: '10px', borderRadius: '8px', border: 'none',
+    backgroundColor: '#185FA5', color: '#fff', fontSize: '13px',
+    fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit',
+    transition: 'all 0.2s',
+  },
+
+  // --- MODAL & PAYMENT STYLES ---
+  modalOverlay: {
+    position: 'fixed', inset: 0, zIndex: 1000,
+    backgroundColor: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    padding: '20px',
+  },
+  modalCard: {
+    backgroundColor: '#fff', borderRadius: '16px',
+    width: '100%', maxWidth: '440px',
+    boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
+    padding: '24px', boxSizing: 'border-box',
+  },
+  modalHeader: {
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+    borderBottom: '1px solid #f2f2f2', paddingBottom: '12px',
+    marginBottom: '16px',
+  },
+  modalTitle: { fontSize: '16px', fontWeight: '700', color: '#1a1a18' },
+  btnCloseModal: {
+    border: 'none', background: 'none', cursor: 'pointer',
+    color: '#888', padding: '4px', borderRadius: '50%',
+    display: 'flex', alignItems: 'center',
+  },
+  paymentSummaryCard: {
+    backgroundColor: '#f7f6f2', borderRadius: '10px',
+    padding: '14px', display: 'flex', flexDirection: 'column',
+    gap: '8px', marginBottom: '16px', border: '1px solid #eee',
+  },
+  summaryRow: { display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#555' },
+  summaryTotalRow: {
+    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+    borderTop: '1px solid #ddd', paddingTop: '8px', marginTop: '4px',
+    fontSize: '13px', color: '#1a1a18',
+  },
+  totalPriceText: { color: '#A32D2D', fontSize: '15px', fontWeight: '700' },
+  paymentMethodGroup: { display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px' },
+  modalLabel: { fontSize: '12px', fontWeight: '600', color: '#444' },
+  paymentMethodsGrid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' },
+  paymentMethodCard: {
+    border: '1px solid #ddd', borderRadius: '8px',
+    padding: '12px 6px', textAlign: 'center', cursor: 'pointer',
+    transition: 'all 0.2s', backgroundColor: '#fff',
+    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px',
+  },
+  paymentMethodCardActive: {
+    borderColor: '#185FA5', backgroundColor: '#F0F6FC',
+    boxShadow: '0 0 0 2px rgba(24,95,165,0.15)',
+  },
+  paymentMethodIcon: { fontSize: '18px' },
+  paymentMethodName: { fontSize: '11px', fontWeight: '600', color: '#333' },
+  paymentConfirmBtn: {
+    width: '100%', padding: '12px', borderRadius: '8px', border: 'none',
+    backgroundColor: '#185FA5', color: '#fff', fontSize: '14px',
+    fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit',
+    boxShadow: '0 4px 12px rgba(24,95,165,0.25)',
+  },
+
+  // SUCCESS STATE STYLES
+  paymentSuccessContainer: { textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px 0' },
+  successIcon: {
+    width: '48px', height: '48px', borderRadius: '50%',
+    backgroundColor: '#EAF3DE', color: '#3B6D11', fontSize: '24px',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    fontWeight: 'bold', marginBottom: '14px',
+  },
+  successTitle: { fontSize: '18px', fontWeight: '700', color: '#1a1a18', marginBottom: '4px' },
+  successDesc: { fontSize: '13px', color: '#666', marginBottom: '16px' },
+  successDetailsCard: {
+    backgroundColor: '#f7f6f2', borderRadius: '10px',
+    border: '1px solid #eee', padding: '14px', width: '100%',
+    boxSizing: 'border-box', display: 'flex', flexDirection: 'column',
+    gap: '8px', marginBottom: '20px',
+  },
+  successDetailRow: { display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#555' },
+  paymentCloseBtn: {
+    width: '100%', padding: '10px', borderRadius: '8px', border: 'none',
+    backgroundColor: '#3B6D11', color: '#fff', fontSize: '13px',
+    fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit',
   },
 }
 
