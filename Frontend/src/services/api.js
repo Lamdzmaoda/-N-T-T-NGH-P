@@ -31,10 +31,9 @@ api.interceptors.response.use(
     const isAuthPath = [
       '/auth/token',
       '/auth/refresh',
-      '/auth/logout',
-      '/users/register',
-      '/auth/register'
-    ].some(path => originalRequest.url && originalRequest.url.includes(path))
+      '/auth/logout'
+    ].some(path => originalRequest.url && originalRequest.url.includes(path)) ||
+    (originalRequest.url && originalRequest.url.endsWith('/users') && originalRequest.method?.toLowerCase() === 'post')
 
     if (error.response?.status === 401 && !isAuthPath && !originalRequest._retry) {
       if (isRefreshing) {
