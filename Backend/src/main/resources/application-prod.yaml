@@ -1,0 +1,5 @@
+
+jwt:
+  signerKey: "nH89dXg8G9QRuCdU8whHzp2F5fclyBtWyzfxTSaqMbsW6bqf4GUd3sBfNWP3/EW9O1gPMqJGBhn+tSrPdvdH6A=="
+  access-token-expiration: 900000       # 15 phút (ms)
+  refresh-token-expiration: 604800000   # 7 ngày (ms)

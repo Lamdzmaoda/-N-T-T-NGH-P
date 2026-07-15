@@ -1,0 +1,22 @@
+services:
+
+  mysql:
+    image: 'mysql:8.0'
+    container_name: travel_mysql
+    environment:
+      MYSQL_DATABASE: travel_db
+      MYSQL_USER: myuser
+      MYSQL_PASSWORD: secret
+      MYSQL_ROOT_PASSWORD: verysecret
+      TZ: Asia/Ho_Chi_Minh
+    ports:
+      - '3306:3306'
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 5s
+      retries: 10
+
+volumes:
+  mysql_data:
