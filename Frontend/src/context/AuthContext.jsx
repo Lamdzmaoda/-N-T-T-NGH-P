@@ -8,34 +8,35 @@ const AuthContext = createContext(null)
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   
-  // Khởi tạo loading = true nếu có token trong trình duyệt, ngược lại = false
+  // Khởi tạo loading = true nếu có trạng thái đăng nhập trong trình duyệt
   const [loading, setLoading] = useState(() => {
-    return !!localStorage.getItem('accessToken')
+    return !!localStorage.getItem('isLoggedIn')
   })
 
   useEffect(() => {
-    const token = localStorage.getItem('accessToken')
-    if (token) {
+    const loggedIn = localStorage.getItem('isLoggedIn')
+    if (loggedIn) {
       authService.getMe()
         .then(res => {
           setUser(res.data.result)
         })
         .catch(() => {
-          localStorage.removeItem('accessToken')
+          localStorage.removeItem('isLoggedIn')
           setUser(null)
         })
-        .finally(() => setLoading(false)) // Chạy bất đồng bộ (Hợp lệ)
+        .finally(() => setLoading(false))
+    } else {
+      setLoading(false)
     }
   }, [])
 
   const login = async (username, password) => {
     const res = await authService.login({ username, password })
-    const token = res.data.result.token
     
-    // Lưu token vào bộ nhớ trình duyệt
-    localStorage.setItem('accessToken', token)
+    // Lưu cờ đăng nhập đơn giản vào localStorage
+    localStorage.setItem('isLoggedIn', 'true')
     
-    // Gọi tiếp API lấy profile để lấy thông tin chi tiết
+    // Gọi tiếp API lấy profile
     const profileRes = await authService.getMe()
     const userData = profileRes.data.result
     
@@ -45,14 +46,11 @@ export function AuthProvider({ children }) {
 
   const logout = async () => {
     try {
-      const token = localStorage.getItem('accessToken') // 🌟 Đã sửa từ 'refreshToken' thành 'accessToken'
-      if (token) {
-        await authService.logout({ token })
-      }
+      await authService.logout({})
     } catch (error) {
       console.error('Lỗi khi gọi API logout: ', error)
     } finally {
-      localStorage.removeItem('accessToken')
+      localStorage.removeItem('isLoggedIn')
       setUser(null)
     }
   }

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Calendar, DollarSign, Clock, MapPin, Trash2, Edit, Plus,
-  Send, Sparkles, Loader2, MessageSquare, AlertCircle, X, Navigation
+  Send, Sparkles, Loader2, MessageSquare, AlertCircle, X, Navigation, Heart, Mail
 } from 'lucide-react'
 import tripService from '../../services/tripService'
 import placeService from '../../services/placeService'
@@ -15,12 +15,29 @@ const TripDetail = () => {
 
   const [trip, setTrip] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [isSendingEmail, setIsSendingEmail] = useState(false)
+  const [isSuggestingAdd, setIsSuggestingAdd] = useState(false)
+  const [isSuggestingEdit, setIsSuggestingEdit] = useState(false)
   const [error, setError] = useState('')
 
   // ----- STATE CHO ITINERARY CRUD -----
   const [dbPlaces, setDbPlaces] = useState([])
   const [addModal, setAddModal] = useState({ open: false, dayNumber: 1 })
   const [editModal, setEditModal] = useState({ open: false, item: null })
+  
+  // ----- MAP PICKER / CUSTOM PLACE STATES -----
+  const [isMapMode, setIsMapMode] = useState(false)
+  const [newPlaceForm, setNewPlaceForm] = useState({
+    name: '',
+    type: 'ATTRACTION',
+    address: '',
+    lat: 22.3364,
+    lng: 103.8438,
+    description: ''
+  })
+  const mapRef = useRef(null)
+  const markerRef = useRef(null)
+  const mapPickerContainerRef = useRef(null)
   
   const [addForm, setAddForm] = useState({
     placeId: '',
@@ -256,8 +273,27 @@ const TripDetail = () => {
       
       saddr = `${startLat},${startLng}`
       daddr = `${endLat},${endLng}`
-      originStr = `${startLat},${startLng}`
-      destStr = `${endLat},${endLng}`
+
+      // Nếu có thông tin địa danh, sử dụng tên địa danh hoặc Google Place ID để nhãn hiển thị chính xác tên thực tế
+      if (startPlace && startPlace.name) {
+        if (startPlace.google_place_id) {
+          originStr = `place_id:${startPlace.google_place_id}`
+        } else {
+          originStr = encodeURIComponent(`${startPlace.name}, ${startPlace.address || ''}`)
+        }
+      } else {
+        originStr = `${startLat},${startLng}`
+      }
+
+      if (endPlace && endPlace.name) {
+        if (endPlace.google_place_id) {
+          destStr = `place_id:${endPlace.google_place_id}`
+        } else {
+          destStr = encodeURIComponent(`${endPlace.name}, ${endPlace.address || ''}`)
+        }
+      } else {
+        destStr = `${endLat},${endLng}`
+      }
     }
 
     // Ánh xạ phương tiện sang chế độ di chuyển của Google Maps (driving, walking, bicycling, transit)
@@ -353,6 +389,29 @@ const TripDetail = () => {
     }
   }
 
+  const handleToggleFavorite = async () => {
+    try {
+      const res = await tripService.toggleFavorite(id)
+      setTrip(prev => ({ ...prev, is_favorite: res.data.result.is_favorite }))
+    } catch (err) {
+      console.error('Lỗi khi cập nhật yêu thích:', err)
+      alert(err.response?.data?.message || 'Có lỗi xảy ra khi cập nhật yêu thích.')
+    }
+  }
+
+  const handleSendEmail = async () => {
+    setIsSendingEmail(true)
+    try {
+      await tripService.sendItineraryEmail(id)
+      alert('✉️ Gửi email lịch trình du lịch chi tiết thành công! Vui lòng kiểm tra hòm thư của bạn.')
+    } catch (err) {
+      console.error('Lỗi khi gửi email:', err)
+      alert(err.response?.data?.message || 'Có lỗi xảy ra khi gửi email lịch trình.')
+    } finally {
+      setIsSendingEmail(false)
+    }
+  }
+
   useEffect(() => {
     loadTripData()
   }, [id])
@@ -368,6 +427,126 @@ const TripDetail = () => {
       fetchTransportOptions()
     }
   }, [showTransportModal])
+
+  const initGoogleMapPicker = (lat, lng) => {
+    if (typeof window.google === 'undefined') {
+      setTimeout(() => initGoogleMapPicker(lat, lng), 100)
+      return
+    }
+
+    const mapContainer = mapPickerContainerRef.current
+    if (!mapContainer) {
+      setTimeout(() => initGoogleMapPicker(lat, lng), 100)
+      return
+    }
+
+    const myLatLng = { lat, lng }
+    const map = new window.google.maps.Map(mapContainer, {
+      center: myLatLng,
+      zoom: 15,
+      mapTypeControl: false,
+      fullscreenControl: false,
+      streetViewControl: false,
+    })
+
+    const marker = new window.google.maps.Marker({
+      position: myLatLng,
+      map: map,
+      draggable: true,
+    })
+
+    mapRef.current = map
+    markerRef.current = marker
+
+    const geocoder = new window.google.maps.Geocoder()
+
+    const updateLocation = (newLat, newLng) => {
+      setNewPlaceForm(prev => ({ ...prev, lat: newLat, lng: newLng }))
+      geocoder.geocode({ location: { lat: newLat, lng: newLng } }, (results, status) => {
+        if (status === 'OK' && results[0]) {
+          setNewPlaceForm(prev => ({ ...prev, address: results[0].formatted_address }))
+        }
+      })
+    }
+
+    marker.addListener('dragend', () => {
+      const pos = marker.getPosition()
+      updateLocation(pos.lat(), pos.lng())
+    })
+
+    map.addListener('click', (e) => {
+      const clickedLat = e.latLng.lat()
+      const clickedLng = e.latLng.lng()
+      marker.setPosition(e.latLng)
+      updateLocation(clickedLat, clickedLng)
+    })
+
+    // Setup Autocomplete cho ô nhập tìm kiếm địa điểm
+    const input = document.getElementById('new-place-name-input')
+    if (input) {
+      const autocomplete = new window.google.maps.places.Autocomplete(input, {
+        fields: ['name', 'formatted_address', 'geometry', 'types'],
+      })
+      autocomplete.addListener('place_changed', () => {
+        const place = autocomplete.getPlace()
+        if (!place.geometry || !place.geometry.location) return
+
+        const selectedLat = place.geometry.location.lat()
+        const selectedLng = place.geometry.location.lng()
+
+        map.setCenter({ lat: selectedLat, lng: selectedLng })
+        marker.setPosition({ lat: selectedLat, lng: selectedLng })
+
+        let detectedType = 'ATTRACTION'
+        if (place.types) {
+          if (place.types.includes('restaurant') || place.types.includes('food') || place.types.includes('cafe')) {
+            detectedType = 'RESTAURANT'
+          } else if (place.types.includes('lodging') || place.types.includes('hotel')) {
+            detectedType = 'HOTEL'
+          }
+        }
+
+        setNewPlaceForm({
+          name: place.name || '',
+          type: detectedType,
+          address: place.formatted_address || '',
+          lat: selectedLat,
+          lng: selectedLng,
+          description: ''
+        })
+      })
+    }
+
+    updateLocation(lat, lng)
+  }
+
+  useEffect(() => {
+    if (isMapMode) {
+      const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY?.replace(/['"]/g, '').trim()
+      if (!apiKey) {
+        alert('Vui lòng cấu hình VITE_GOOGLE_MAPS_API_KEY trong file .env!')
+        setIsMapMode(false)
+        return
+      }
+
+      // Đảm bảo script tag Google Maps đã tồn tại trong head
+      if (!document.getElementById('google-maps-js')) {
+        const js = document.createElement('script')
+        js.id = 'google-maps-js'
+        js.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`
+        document.head.appendChild(js)
+      }
+
+      // Gọi khởi tạo bản đồ vô điều kiện (hàm này tự lặp/chờ đến khi window.google và DOM ref khả dụng!)
+      const sorted = getSortedPlacesForDay(addModal.dayNumber)
+      const lat = sorted[0]?.lat || 22.3364
+      const lng = sorted[0]?.lng || 103.8438
+      initGoogleMapPicker(lat, lng)
+    } else {
+      mapRef.current = null
+      markerRef.current = null
+    }
+  }, [isMapMode])
 
   if (loading) {
     return (
@@ -412,29 +591,124 @@ const TripDetail = () => {
 
   const allDaysList = Array.from({ length: totalDays }, (_, i) => i + 1)
 
+  const calculateDistance = (lat1, lon1, lat2, lon2) => {
+    if (!lat1 || !lon1 || !lat2 || !lon2) return null
+    const R = 6371 // Bán kính Trái Đất (km)
+    const dLat = (lat2 - lat1) * (Math.PI / 180)
+    const dLon = (lon2 - lon1) * (Math.PI / 180)
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2)
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+    return R * c
+  }
+
+  const getSortedPlacesForDay = (dayNum) => {
+    const currentDayItems = groupedItineraries[dayNum] || []
+    let refPlace = null
+    if (currentDayItems.length > 0) {
+      refPlace = currentDayItems[currentDayItems.length - 1]?.place
+    } else {
+      for (let d = dayNum - 1; d >= 1; d--) {
+        const prevItems = groupedItineraries[d] || []
+        if (prevItems.length > 0) {
+          refPlace = prevItems[prevItems.length - 1]?.place
+          break
+        }
+      }
+    }
+
+    if (!refPlace || !refPlace.lat || !refPlace.lng) {
+      return dbPlaces.map(p => ({ ...p, distance: null }))
+    }
+
+    return [...dbPlaces]
+      .map(p => {
+        const dist = calculateDistance(refPlace.lat, refPlace.lng, p.lat, p.lng)
+        return { ...p, distance: dist }
+      })
+      .filter(p => p.distance === null || p.distance < 50)
+      .sort((a, b) => {
+        if (a.distance === null) return 1
+        if (b.distance === null) return -1
+        return a.distance - b.distance
+      })
+  }
+
+  const formatChatText = (text) => {
+    if (!text) return ''
+    const parts = text.split(/(\*\*.*?\*\*)/g)
+    return parts.map((part, index) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={index}>{part.slice(2, -2)}</strong>
+      }
+      return part
+    })
+  }
+
   // ----- XỬ LÝ ITINERARY CRUD -----
   const handleOpenAddModal = (dayNumber) => {
+    const sorted = getSortedPlacesForDay(dayNumber)
     setAddModal({ open: true, dayNumber })
     setAddForm({
-      placeId: dbPlaces[0]?.id || '',
+      placeId: sorted[0]?.id || '',
       startTime: '09:00',
       note: ''
     })
   }
 
-  const handleCloseAddModal = () => setAddModal({ open: false, dayNumber: 1 })
+  const handleCloseAddModal = () => {
+    setAddModal({ open: false, dayNumber: 1 })
+    setIsMapMode(false)
+    setNewPlaceForm({
+      name: '',
+      type: 'ATTRACTION',
+      address: '',
+      lat: 22.3364,
+      lng: 103.8438,
+      description: ''
+    })
+    mapRef.current = null
+    markerRef.current = null
+  }
 
   const handleAddItineraryItem = async (e) => {
     e.preventDefault()
     try {
+      let finalPlaceId = addForm.placeId
+
+      if (isMapMode) {
+        if (!newPlaceForm.name.trim()) {
+          alert('Vui lòng nhập tên địa điểm mới!')
+          return
+        }
+        if (!newPlaceForm.address.trim()) {
+          alert('Vui lòng nhập hoặc chọn vị trí trên bản đồ để lấy địa chỉ!')
+          return
+        }
+
+        // Tạo địa điểm mới trong DB
+        const placeRes = await placeService.createPlace({
+          ...newPlaceForm,
+          is_visible: true
+        })
+        finalPlaceId = placeRes.data.result.id
+      }
+
       const payload = {
         tripId: id,
-        placeId: addForm.placeId,
+        placeId: finalPlaceId,
         dayNumber: addModal.dayNumber,
         startTime: addForm.startTime,
         note: addForm.note
       }
       await tripService.addItineraryItem(payload)
+
+      // Cập nhật lại danh mục địa điểm
+      const placesRes = await placeService.getPlaces({ page: 0, size: 500 })
+      setDbPlaces(placesRes.data.result.content || [])
+
       loadTripData()
       handleCloseAddModal()
     } catch (err) {
@@ -451,6 +725,45 @@ const TripDetail = () => {
   }
 
   const handleCloseEditModal = () => setEditModal({ open: false, item: null })
+
+  const handleSuggestNoteForAdd = async () => {
+    if (!addForm.placeId) {
+      alert('Vui lòng chọn địa điểm trước khi yêu cầu gợi ý!')
+      return
+    }
+    const place = dbPlaces.find(p => p.id === addForm.placeId)
+    if (!place) return
+
+    setIsSuggestingAdd(true)
+    try {
+      const res = await tripService.getAiSuggestionForPlace(place.name, place.type)
+      setAddForm(prev => ({ ...prev, note: res.data.result || '' }))
+    } catch (err) {
+      console.error('Lỗi khi gợi ý ghi chú:', err)
+      alert('Không thể kết nối với AI Assistant. Vui lòng thử lại!')
+    } finally {
+      setIsSuggestingAdd(false)
+    }
+  }
+
+  const handleSuggestNoteForEdit = async () => {
+    const place = editModal.item?.place
+    if (!place) {
+      alert('Không tìm thấy thông tin địa điểm!')
+      return
+    }
+
+    setIsSuggestingEdit(true)
+    try {
+      const res = await tripService.getAiSuggestionForPlace(place.name, place.type)
+      setEditForm(prev => ({ ...prev, note: res.data.result || '' }))
+    } catch (err) {
+      console.error('Lỗi khi gợi ý ghi chú:', err)
+      alert('Không thể kết nối với AI Assistant. Vui lòng thử lại!')
+    } finally {
+      setIsSuggestingEdit(false)
+    }
+  }
 
   const handleUpdateItineraryItem = async (e) => {
     e.preventDefault()
@@ -490,7 +803,7 @@ const TripDetail = () => {
 
     try {
       // Gọi fetch API kết nối với endpoint stream WebFlux của Backend
-      const response = await fetch(`http://localhost:8080/travel-ai-planner/trips/${id}/chat?message=${encodeURIComponent(userMsg)}`, {
+      const response = await fetch(`/travel-ai-planner/trips/${id}/chat?message=${encodeURIComponent(userMsg)}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
@@ -597,6 +910,45 @@ const TripDetail = () => {
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                <button 
+                  style={{
+                    ...styles.btnTransport,
+                    backgroundColor: (trip.is_favorite || trip.isFavorite) ? '#FEE2E2' : '#fff',
+                    borderColor: (trip.is_favorite || trip.isFavorite) ? '#FCA5A5' : '#ccc',
+                    color: (trip.is_favorite || trip.isFavorite) ? '#EF4444' : '#666',
+                    padding: '8px 12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: '6px',
+                    cursor: 'pointer'
+                  }}
+                  onClick={handleToggleFavorite}
+                >
+                  <Heart size={14} fill={(trip.is_favorite || trip.isFavorite) ? '#EF4444' : 'none'} style={{ marginRight: '5px' }} />
+                  {(trip.is_favorite || trip.isFavorite) ? 'Đã yêu thích' : 'Yêu thích'}
+                </button>
+
+                <button 
+                  style={{
+                    ...styles.btnTransport,
+                    backgroundColor: '#EFF6FF',
+                    borderColor: '#BFDBFE',
+                    color: '#1D4ED8',
+                    padding: '8px 12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: '6px',
+                    cursor: 'pointer'
+                  }}
+                  onClick={handleSendEmail}
+                  disabled={isSendingEmail}
+                >
+                  <Mail size={14} style={{ marginRight: '5px' }} />
+                  {isSendingEmail ? 'Đang gửi...' : 'Gửi Email Lịch Trình'}
+                </button>
+
                 <button style={styles.btnTransport} onClick={() => {
                   setShowTransportModal(true)
                   setTransportOptions(null)
@@ -738,6 +1090,15 @@ const TripDetail = () => {
                             )
                           : null
 
+                        // Tìm chặng di chuyển liên ngày (từ điểm cuối ngày trước đến điểm đầu ngày hôm nay)
+                        const prevDayItems = groupedItineraries[dayNum - 1] || []
+                        const prevDayLastItem = prevDayItems[prevDayItems.length - 1]
+                        const transportFromPrevDay = (idx === 0 && dayNum > 1 && prevDayLastItem)
+                          ? transportSummary?.details?.find(
+                              d => d.fromItineraryId === prevDayLastItem.id && d.toItineraryId === item.id
+                            )
+                          : null
+
                         // Tìm chặng bay/chặng xe dài đến địa điểm du lịch (nếu có)
                         const transportLongDistance = (idx === 0 && dayNum === 1)
                           ? transportSummary?.details?.find(d => d.isLongDistance === true)
@@ -785,6 +1146,27 @@ const TripDetail = () => {
                                   title={trip?.status === 'ONGOING' ? "Click để xem bản đồ chỉ đường chi tiết" : "Kích hoạt hành trình để mở khóa bản đồ"}
                                 >
                                   🚗 Bắt đầu từ <strong>Vị trí của bạn</strong>: {transportFromGPS.providerName} ({transportFromGPS.vehicleType}) - <span style={{color:'#A32D2D', fontWeight:'600'}}>{transportFromGPS.price?.toLocaleString('vi-VN')} VNĐ</span> ({transportFromGPS.durationMinutes} phút)
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Chặng di chuyển từ ngày hôm trước sang đầu ngày hôm nay */}
+                            {transportFromPrevDay && (
+                              <div style={styles.timelineTransportRow}>
+                                <div style={styles.timelineTransportIndicator}>
+                                  <div style={styles.timelineTransportDotGPS} />
+                                  <div style={styles.timelineTransportLine} />
+                                </div>
+                                <div 
+                                  style={{
+                                    ...styles.timelineTransportCard,
+                                    cursor: trip?.status === 'ONGOING' ? 'pointer' : 'not-allowed',
+                                    opacity: trip?.status === 'ONGOING' ? 1 : 0.7
+                                  }}
+                                  onClick={() => handleOpenMapModal(transportFromPrevDay, prevDayLastItem.place, item.place)}
+                                  title={trip?.status === 'ONGOING' ? "Click để xem bản đồ chỉ đường chi tiết" : "Kích hoạt hành trình để mở khóa bản đồ"}
+                                >
+                                  🚗 Di chuyển đầu ngày (từ {prevDayLastItem.place?.name}): <strong>{transportFromPrevDay.providerName}</strong> ({transportFromPrevDay.vehicleType}) - <span style={{color:'#A32D2D', fontWeight:'650'}}>{transportFromPrevDay.price?.toLocaleString('vi-VN')} VNĐ</span> ({transportFromPrevDay.durationMinutes} phút)
                                 </div>
                               </div>
                             )}
@@ -874,7 +1256,7 @@ const TripDetail = () => {
                         ...(chat.sender === 'user' ? styles.userBubble : styles.botBubble)
                       }}
                     >
-                      {chat.text}
+                      {formatChatText(chat.text)}
                       {chat.isStreaming && <span style={styles.streamingIndicator}>|</span>}
                     </div>
                   </div>
@@ -908,7 +1290,7 @@ const TripDetail = () => {
       {/* -------------------- MODAL: THÊM HOẠT ĐỘNG -------------------- */}
       {addModal.open && (
         <div style={styles.modalOverlay}>
-          <div style={styles.modalCard}>
+          <div style={{ ...styles.modalCard, maxWidth: isMapMode ? '540px' : '440px', transition: 'max-width 0.2s ease' }}>
             <div style={styles.modalHeader}>
               <h3>Thêm hoạt động - Ngày {addModal.dayNumber}</h3>
               <button style={styles.btnCloseModal} onClick={handleCloseAddModal}>
@@ -916,22 +1298,119 @@ const TripDetail = () => {
               </button>
             </div>
             <form onSubmit={handleAddItineraryItem}>
-              <div style={styles.formGroup}>
-                <label style={styles.modalLabel}>Chọn địa điểm</label>
-                <select
-                  style={styles.modalSelect}
-                  value={addForm.placeId}
-                  onChange={e => setAddForm({ ...addForm, placeId: e.target.value })}
-                  required
+              <div style={{ display: 'flex', borderBottom: '1px solid #eee', marginBottom: '16px' }}>
+                <button 
+                  type="button"
+                  onClick={() => setIsMapMode(false)}
+                  style={{ flex: 1, padding: '10px', border: 'none', background: 'none', borderBottom: !isMapMode ? '2px solid #185FA5' : 'none', fontWeight: !isMapMode ? 'bold' : 'normal', color: !isMapMode ? '#185FA5' : '#666', cursor: 'pointer', fontSize: '13px', fontFamily: 'inherit' }}
                 >
-                  {dbPlaces.map(p => (
-                    <option key={p.id} value={p.id}>{p.name} ({p.address?.substring(0,25)}...)</option>
-                  ))}
-                  {dbPlaces.length === 0 && (
-                    <option value="">Không có địa điểm nào khả dụng</option>
-                  )}
-                </select>
+                  Chọn từ danh sách
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => setIsMapMode(true)}
+                  style={{ flex: 1, padding: '10px', border: 'none', background: 'none', borderBottom: isMapMode ? '2px solid #185FA5' : 'none', fontWeight: isMapMode ? 'bold' : 'normal', color: isMapMode ? '#185FA5' : '#666', cursor: 'pointer', fontSize: '13px', fontFamily: 'inherit' }}
+                >
+                  🗺️ Bản đồ & Địa điểm mới
+                </button>
               </div>
+
+              {!isMapMode ? (
+                <div style={styles.formGroup}>
+                  <label style={styles.modalLabel}>Chọn địa điểm</label>
+                  <select
+                    style={styles.modalSelect}
+                    value={addForm.placeId}
+                    onChange={e => setAddForm({ ...addForm, placeId: e.target.value })}
+                    required={!isMapMode}
+                  >
+                    {getSortedPlacesForDay(addModal.dayNumber).map(p => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} {p.distance !== null ? `(cách điểm cũ ${p.distance.toFixed(1)} km)` : `(${p.address?.substring(0,25)}...)`}
+                      </option>
+                    ))}
+                    {dbPlaces.length === 0 && (
+                      <option value="">Không có địa điểm nào khả dụng</option>
+                    )}
+                  </select>
+                  {(() => {
+                    const selectedPlace = dbPlaces.find(p => p.id === addForm.placeId)
+                    if (selectedPlace) {
+                      const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(selectedPlace.name + ' ' + (selectedPlace.address || ''))}`
+                      return (
+                        <div style={{ marginTop: '6px' }}>
+                          <a 
+                            href={mapsUrl} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            style={{ color: '#185FA5', fontSize: '12px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', fontWeight: '600' }}
+                          >
+                            🗺️ Xem vị trí "{selectedPlace.name}" trên Google Maps
+                          </a>
+                        </div>
+                      )
+                    }
+                    return null
+                  })()}
+                </div>
+              ) : (
+                <>
+                  <div style={styles.formGroup}>
+                    <label style={styles.modalLabel}>Tên địa điểm mới</label>
+                    <input
+                      id="new-place-name-input"
+                      style={styles.modalInput}
+                      type="text"
+                      placeholder="Tìm kiếm địa điểm trên Google Maps hoặc tự nhập..."
+                      value={newPlaceForm.name}
+                      onChange={e => setNewPlaceForm({ ...newPlaceForm, name: e.target.value })}
+                      required={isMapMode}
+                    />
+                  </div>
+
+                  <div style={styles.formGroup}>
+                    <label style={styles.modalLabel}>Loại địa điểm</label>
+                    <select
+                      style={styles.modalSelect}
+                      value={newPlaceForm.type}
+                      onChange={e => setNewPlaceForm({ ...newPlaceForm, type: e.target.value })}
+                      required={isMapMode}
+                    >
+                      <option value="ATTRACTION">📍 Điểm tham quan (Attraction)</option>
+                      <option value="RESTAURANT">🍴 Nhà hàng / Quán ăn (Restaurant)</option>
+                      <option value="HOTEL">🏨 Khách sạn / Nơi lưu trú (Hotel)</option>
+                    </select>
+                  </div>
+
+                  <div style={styles.formGroup}>
+                    <label style={styles.modalLabel}>Chọn trên Bản đồ (Kéo pin hoặc click bản đồ)</label>
+                    <div ref={mapPickerContainerRef} style={{ height: '200px', borderRadius: '8px', border: '1px solid #ddd', marginBottom: '8px' }} />
+                  </div>
+
+                  <div style={styles.formGroup}>
+                    <label style={styles.modalLabel}>Địa chỉ cụ thể (Tự động lấy khi click bản đồ)</label>
+                    <input
+                      style={styles.modalInput}
+                      type="text"
+                      placeholder="Địa chỉ sẽ tự động lấy từ bản đồ..."
+                      value={newPlaceForm.address}
+                      onChange={e => setNewPlaceForm({ ...newPlaceForm, address: e.target.value })}
+                      required={isMapMode}
+                    />
+                  </div>
+
+                  <div style={styles.formGroup}>
+                    <label style={styles.modalLabel}>Mô tả ngắn (Không bắt buộc)</label>
+                    <textarea
+                      style={styles.modalTextarea}
+                      placeholder="Nhập mô tả địa điểm..."
+                      value={newPlaceForm.description}
+                      onChange={e => setNewPlaceForm({ ...newPlaceForm, description: e.target.value })}
+                      rows="2"
+                    />
+                  </div>
+                </>
+              )}
 
               <div style={styles.formGroup}>
                 <label style={styles.modalLabel}>Giờ bắt đầu</label>
@@ -945,7 +1424,18 @@ const TripDetail = () => {
               </div>
 
               <div style={styles.formGroup}>
-                <label style={styles.modalLabel}>Ghi chú hoạt động</label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                  <label style={{ ...styles.modalLabel, margin: 0 }}>Ghi chú hoạt động</label>
+                  <button 
+                    type="button" 
+                    onClick={handleSuggestNoteForAdd}
+                    disabled={isSuggestingAdd}
+                    style={styles.btnAiSuggest}
+                  >
+                    <Sparkles size={11} style={{ marginRight: '4px' }} />
+                    {isSuggestingAdd ? 'Đang viết...' : '💡 AI Gợi ý'}
+                  </button>
+                </div>
                 <textarea
                   style={styles.modalTextarea}
                   value={addForm.note}
@@ -975,6 +1465,25 @@ const TripDetail = () => {
               </button>
             </div>
             <form onSubmit={handleUpdateItineraryItem}>
+              {editModal.item?.place && (
+                <div style={styles.formGroup}>
+                  <label style={styles.modalLabel}>Địa điểm</label>
+                  <div style={{ fontSize: '13px', fontWeight: '700', color: '#1a1a18', marginTop: '4px' }}>
+                    {editModal.item.place.name}
+                  </div>
+                  <div style={{ marginTop: '4px' }}>
+                    <a 
+                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(editModal.item.place.name + ' ' + (editModal.item.place.address || ''))}`}
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      style={{ color: '#185FA5', fontSize: '12px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', fontWeight: '600' }}
+                    >
+                      🗺️ Xem vị trí trên Google Maps
+                    </a>
+                  </div>
+                </div>
+              )}
+
               <div style={styles.formGroup}>
                 <label style={styles.modalLabel}>Giờ bắt đầu</label>
                 <input
@@ -987,7 +1496,18 @@ const TripDetail = () => {
               </div>
 
               <div style={styles.formGroup}>
-                <label style={styles.modalLabel}>Ghi chú hoạt động</label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                  <label style={{ ...styles.modalLabel, margin: 0 }}>Ghi chú hoạt động</label>
+                  <button 
+                    type="button" 
+                    onClick={handleSuggestNoteForEdit}
+                    disabled={isSuggestingEdit}
+                    style={styles.btnAiSuggest}
+                  >
+                    <Sparkles size={11} style={{ marginRight: '4px' }} />
+                    {isSuggestingEdit ? 'Đang viết...' : '💡 AI Gợi ý'}
+                  </button>
+                </div>
                 <textarea
                   style={styles.modalTextarea}
                   value={editForm.note}
@@ -1247,6 +1767,20 @@ const styles = {
     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
   },
   backBtnPlain: { padding: '8px 16px', borderRadius: '8px', border: '1px solid #ddd', cursor: 'pointer', marginTop: '12px' },
+  btnAiSuggest: {
+    display: 'flex',
+    alignItems: 'center',
+    background: 'linear-gradient(135deg, #4F46E5, #3B82F6)',
+    color: '#fff',
+    border: 'none',
+    padding: '4px 8px',
+    borderRadius: '4px',
+    fontSize: '11px',
+    fontWeight: '600',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+  },
   
   container: { maxWidth: '1200px', margin: '0 auto', padding: '24px' },
   header: { marginBottom: '24px' },
@@ -1367,6 +1901,7 @@ const styles = {
   chatBubble: {
     maxWidth: '80%', padding: '10px 14px', borderRadius: '14px',
     fontSize: '13px', lineHeight: 1.5, wordBreak: 'break-word',
+    whiteSpace: 'pre-line',
   },
   botBubble: {
     backgroundColor: '#fff', color: '#333',

@@ -9,6 +9,7 @@ import PlaceList from './pages/Places/PlaceList'
 import PlaceDetail from './pages/Places/PlaceDetail'
 import CreateTrip from './pages/Trips/CreateTrip'
 import TripDetail from './pages/Trips/TripDetail'
+import MyTrips from './pages/Trips/MyTrips'
 import Profile from './pages/Profile/Profile'
 import Dashboard from './pages/Admin/Dashboard'
 import Notifications from './pages/Notifications/Notifications'
@@ -38,6 +39,9 @@ function AppRoutes() {
         <Route path="/register" element={<Register />} />
         <Route path="/places" element={<PlaceList />} />
         <Route path="/places/:id" element={<PlaceDetail />} />
+        <Route path="/trips" element={
+          <PrivateRoute><MyTrips /></PrivateRoute>
+        } />
         <Route path="/trips/create" element={
           <PrivateRoute><CreateTrip /></PrivateRoute>
         } />

@@ -1,9 +1,19 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Star, MapPin, Clock, Ticket, Heart, Share2, Plus, Trash2, Loader2, Calendar, CreditCard } from 'lucide-react'
+import {
+  ArrowLeft, Star, MapPin, Clock, Ticket, Heart, Share2,
+  Plus, Trash2, Loader2, Calendar, CreditCard, ExternalLink,
+  CheckCircle, X, Sparkles
+} from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import placeService from '../../services/placeService'
 import bookingService from '../../services/bookingService'
+
+const PAYMENT_METHODS = [
+  { id: 'MOMO',  name: 'Ví MoMo',      icon: '🌸', color: 'rgba(166,29,110,0.15)', border: 'rgba(166,29,110,0.35)' },
+  { id: 'VNPAY', name: 'Cổng VNPAY',   icon: '💎', color: 'rgba(56,189,248,0.1)',   border: 'rgba(56,189,248,0.3)' },
+  { id: 'CARD',  name: 'Thẻ Quốc tế',  icon: '💳', color: 'rgba(129,140,248,0.1)',  border: 'rgba(129,140,248,0.3)' },
+]
 
 const PlaceDetail = () => {
   const { id } = useParams()
@@ -17,8 +27,9 @@ const PlaceDetail = () => {
 
   const [reviewText, setReviewText] = useState('')
   const [rating, setRating] = useState(5)
+  const [hoverRating, setHoverRating] = useState(0)
 
-  // --- STATE PHỤC VỤ ĐẶT CHỖ (BOOKING) & THANH TOÁN (PAYMENT) ---
+  // Booking & Payment state
   const [checkIn, setCheckIn] = useState('')
   const [checkOut, setCheckOut] = useState('')
   const [bookingNote, setBookingNote] = useState('')
@@ -30,14 +41,12 @@ const PlaceDetail = () => {
   const [paymentSuccess, setPaymentSuccess] = useState(false)
   const [paymentResult, setPaymentResult] = useState(null)
 
-  // 1. Tải thông tin chi tiết địa điểm và đánh giá từ Database
   const loadPlaceData = async () => {
     try {
       setLoading(true)
       const placeRes = await placeService.getPlaceById(id)
       setPlace(placeRes.data.result)
       setLiked(placeRes.data.result?.liked || placeRes.data.result?.isLiked || false)
-
       const reviewsRes = await placeService.getReviews(id)
       setReviews(reviewsRes.data.result || [])
     } catch (err) {
@@ -47,42 +56,24 @@ const PlaceDetail = () => {
     }
   }
 
-  useEffect(() => {
-    loadPlaceData()
-  }, [id])
+  useEffect(() => { loadPlaceData() }, [id])
 
-  // 2. Xử lý yêu thích địa điểm
   const handleLike = async () => {
     try {
-      if (liked) {
-        await placeService.unlikePlace(id)
-        setLiked(false)
-      } else {
-        await placeService.likePlace(id)
-        setLiked(true)
-      }
+      if (liked) { await placeService.unlikePlace(id); setLiked(false) }
+      else { await placeService.likePlace(id); setLiked(true) }
     } catch (err) {
       console.error(err)
-      alert('Vui lòng đăng nhập để thực hiện chức năng yêu thích địa điểm!')
+      alert('Vui lòng đăng nhập để thực hiện chức năng yêu thích!')
     }
   }
 
-  // 3. Xử lý gửi đánh giá
   const handleReviewSubmit = async (e) => {
     e.preventDefault()
     if (!reviewText.trim()) return
     try {
-      const payload = {
-        placeId: id,
-        rating,
-        comment: reviewText,
-        photos: ''
-      }
-      await placeService.createReview(payload)
-      setReviewText('')
-      setRating(5)
-
-      // Load lại thông tin địa điểm (để lấy avg_rating mới) và reviews
+      await placeService.createReview({ placeId: id, rating, comment: reviewText, photos: '' })
+      setReviewText(''); setRating(5)
       const placeRes = await placeService.getPlaceById(id)
       setPlace(placeRes.data.result)
       const reviewsRes = await placeService.getReviews(id)
@@ -93,273 +84,281 @@ const PlaceDetail = () => {
     }
   }
 
-  // 4. Xử lý xóa đánh giá của chính mình
   const handleDeleteReview = async (reviewId) => {
     if (!window.confirm('Bạn có chắc chắn muốn xóa đánh giá này?')) return
     try {
       await placeService.deleteReview(reviewId)
-      
-      // Load lại dữ liệu mới nhất
       const placeRes = await placeService.getPlaceById(id)
       setPlace(placeRes.data.result)
       const reviewsRes = await placeService.getReviews(id)
       setReviews(reviewsRes.data.result || [])
     } catch (err) {
-      console.error(err)
-      alert('Xóa đánh giá thất bại.')
+      console.error(err); alert('Xóa đánh giá thất bại.')
     }
   }
 
-  // --- HÀM HỖ TRỢ LẤY GIÁ TRỊ TẦM GIÁ ---
   const getBasePrice = () => {
-    if (!place?.price_range) return 250000 // Mặc định 250,000đ
+    if (!place?.price_range) return 250000
     const numbers = place.price_range.replace(/[^0-9]/g, '')
     if (numbers) {
       const parsed = parseInt(numbers, 10)
-      if (parsed > 1000) return parsed // Ví dụ: "500000" -> 500,000đ
-      return parsed * 100000 // Ví dụ: "$3" -> 300,000đ
+      if (parsed > 1000) return parsed
+      return parsed * 100000
     }
     return 250000
   }
 
-  // --- XỬ LÝ ĐẶT CHỖ (BOOKING) ---
   const handleBookingSubmit = async (e) => {
     e.preventDefault()
-    if (!user) {
-      alert('Vui lòng đăng nhập để thực hiện đặt chỗ!')
-      navigate('/login')
-      return
-    }
-    if (!checkIn || !checkOut) {
-      alert('Vui lòng chọn đầy đủ ngày nhận và ngày trả!')
-      return
-    }
-    if (new Date(checkIn) > new Date(checkOut)) {
-      alert('Ngày nhận không thể sau ngày trả!')
-      return
-    }
-
+    if (!user) { alert('Vui lòng đăng nhập để thực hiện đặt chỗ!'); navigate('/login'); return }
+    if (!checkIn || !checkOut) { alert('Vui lòng chọn đầy đủ ngày nhận và ngày trả!'); return }
+    if (new Date(checkIn) > new Date(checkOut)) { alert('Ngày nhận không thể sau ngày trả!'); return }
     setIsBookingLoading(true)
     try {
       const days = Math.ceil((new Date(checkOut) - new Date(checkIn)) / (1000 * 60 * 60 * 24)) || 1
-      const base = getBasePrice()
-      const total = base * days
-
-      const payload = {
-        placeId: id,
-        checkIn,
-        checkOut,
-        totalPrice: total,
-        note: bookingNote
-      }
-
-      const res = await bookingService.createBooking(payload)
+      const total = getBasePrice() * days
+      const res = await bookingService.createBooking({ placeId: id, checkIn, checkOut, totalPrice: total, note: bookingNote })
       setCreatedBooking(res.data.result)
       setPaymentSuccess(false)
       setShowPaymentModal(true)
     } catch (err) {
-      console.error(err)
-      alert(err.response?.data?.message || 'Có lỗi xảy ra khi tạo đặt chỗ!')
+      console.error(err); alert(err.response?.data?.message || 'Có lỗi xảy ra khi tạo đặt chỗ!')
     } finally {
       setIsBookingLoading(false)
     }
   }
 
-  // --- XỬ LÝ THANH TOÁN (PAYMENT) ---
   const handlePaymentSubmit = async (e) => {
     e.preventDefault()
     if (!createdBooking) return
     setIsPaymentLoading(true)
     try {
-      const payload = {
-        bookingId: createdBooking.id,
-        method: selectedPaymentMethod
-      }
-      const res = await bookingService.processPayment(payload)
+      const res = await bookingService.processPayment({ bookingId: createdBooking.id, method: selectedPaymentMethod })
       setPaymentResult(res.data.result)
       setPaymentSuccess(true)
-      
-      // Load lại thông tin địa điểm sau khi đặt chỗ thành công để cập nhật slots
       loadPlaceData()
     } catch (err) {
-      console.error(err)
-      alert(err.response?.data?.message || 'Thanh toán thất bại, vui lòng thử lại!')
+      console.error(err); alert(err.response?.data?.message || 'Thanh toán thất bại, vui lòng thử lại!')
     } finally {
       setIsPaymentLoading(false)
     }
   }
 
+  const days = checkIn && checkOut && new Date(checkIn) <= new Date(checkOut)
+    ? Math.ceil((new Date(checkOut) - new Date(checkIn)) / (1000 * 60 * 60 * 24)) || 1
+    : 0
+
+  // ── Loading ────────────────────────────────────────────
   if (loading) return (
-    <div style={styles.loadingWrap}>
-      <Loader2 size={36} color="#185FA5" className="animate-spin" />
-      <p style={{ marginTop: '12px', color: '#666' }}>Đang tải thông tin chi tiết địa điểm...</p>
+    <div style={s.loadingPage}>
+      <div style={s.loadingBg} />
+      <div style={s.loadingContent}>
+        <div style={s.loadingIconWrap} className="animate-pulse-glow">
+          <Loader2 size={28} color="#38BDF8" className="animate-spin" />
+        </div>
+        <p style={s.loadingText}>Đang tải thông tin địa điểm...</p>
+      </div>
     </div>
   )
 
   if (!place) return (
-    <div style={styles.notFound}>
-      <p>Không tìm thấy địa điểm hoặc đã bị ẩn.</p>
-      <button style={styles.backBtnPlain} onClick={() => navigate('/places')}>Quay lại</button>
+    <div style={s.notFoundPage}>
+      <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔍</div>
+      <h2 style={{ color: '#F8FAFC', marginBottom: '8px' }}>Không tìm thấy địa điểm</h2>
+      <p style={{ color: '#64748B', marginBottom: '24px' }}>Địa điểm này không tồn tại hoặc đã bị ẩn.</p>
+      <button style={s.backBtnPlain} onClick={() => navigate('/places')}>← Quay lại danh sách</button>
     </div>
   )
 
   const mapsUrl = 'https://maps.google.com/?q=' + encodeURIComponent(place.address)
 
   return (
-    <div style={styles.page}>
-      {/* HERO IMAGE BANNER */}
-      <div style={styles.heroWrap}>
+    <div style={s.page}>
+      {/* ── HERO IMAGE ─────────────────────────────────────── */}
+      <div style={s.heroWrap}>
         <img
-          src={place.photos || 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&q=80'}
+          src={place.photos || 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1200&q=80'}
           alt={place.name}
-          style={styles.heroImg}
-          onError={e => e.target.src = 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&q=80'}
+          style={s.heroImg}
+          onError={e => e.target.src = 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1200&q=80'}
         />
-        <div style={styles.heroOverlay} />
-        <button style={styles.backBtn} onClick={() => navigate('/places')}>
-          <ArrowLeft size={16} /> Quay lại
+        <div style={s.heroOverlay} />
+        <div style={s.heroMesh} />
+
+        {/* Back button */}
+        <button style={s.backBtn} onClick={() => navigate('/places')}>
+          <ArrowLeft size={15} /> Địa điểm
         </button>
-        <div style={styles.heroActions}>
+
+        {/* Hero actions */}
+        <div style={s.heroActions}>
           <button
-            style={{ ...styles.actionBtn, ...(liked ? styles.actionBtnLiked : {}) }}
+            style={{ ...s.actionBtn, ...(liked ? s.actionBtnLiked : {}) }}
             onClick={handleLike}
+            title={liked ? 'Bỏ yêu thích' : 'Yêu thích'}
           >
-            <Heart size={16} fill={liked ? '#A32D2D' : 'none'} color={liked ? '#A32D2D' : '#555'} />
+            <Heart size={16} fill={liked ? '#EF4444' : 'none'} color={liked ? '#EF4444' : 'rgba(248,250,252,0.9)'} />
           </button>
-          <button style={styles.actionBtn}>
-            <Share2 size={16} color="#555" />
+          <button style={s.actionBtn} title="Chia sẻ">
+            <Share2 size={16} color="rgba(248,250,252,0.9)" />
           </button>
+        </div>
+
+        {/* Hero title overlay */}
+        <div style={s.heroTitleWrap}>
+          <span style={s.heroCatBadge}>{place.placeCategory?.name || 'Du lịch'}</span>
+          <h1 style={s.heroName}>{place.name}</h1>
+          <div style={s.heroAddr}>
+            <MapPin size={13} color="rgba(248,250,252,0.7)" />
+            <span>{place.address}</span>
+          </div>
         </div>
       </div>
 
-      <div style={styles.body}>
-        <div style={styles.main}>
-          {/* PLACE INFO CARD */}
-          <div style={styles.infoCard}>
-            <div style={styles.infoTop}>
-              <div>
-                <span style={styles.catBadge}>{place.placeCategory?.name || 'Du lịch'}</span>
-                <h1 style={styles.name}>{place.name}</h1>
-                <p style={styles.addr}><MapPin size={13} color="#aaa" /> {place.address}</p>
+      {/* ── BODY ───────────────────────────────────────────── */}
+      <div style={s.body}>
+
+        {/* ── MAIN COLUMN ──────────────────────────────────── */}
+        <div style={s.main}>
+
+          {/* Info card */}
+          <div style={s.card} className="animate-fade-in-up">
+            {/* Actions row */}
+            <div style={s.infoTopRow}>
+              <div style={s.statsRow}>
+                <div style={s.statItem}>
+                  <div style={s.statNum}>{place.avg_rating ? place.avg_rating.toFixed(1) : '5.0'}</div>
+                  <div style={s.statLabel}>⭐ Điểm đánh giá</div>
+                </div>
+                <div style={s.statDivider} />
+                <div style={s.statItem}>
+                  <div style={s.statNum}>{reviews.length}</div>
+                  <div style={s.statLabel}>💬 Đánh giá</div>
+                </div>
+                <div style={s.statDivider} />
+                <div style={s.statItem}>
+                  <div style={s.statNum}>{place.max_slots !== null ? place.max_slots : '∞'}</div>
+                  <div style={s.statLabel}>🎟️ Slot khả dụng</div>
+                </div>
               </div>
               <button
-                style={styles.addBtn}
+                style={s.addToTripBtn}
                 onClick={() => navigate(user ? '/trips/create' : '/login')}
               >
-                <Plus size={16} /> Thêm vào lịch trình
+                <Sparkles size={14} />
+                Thêm vào lịch trình
               </button>
             </div>
 
-            <div style={styles.statsRow}>
-              <div style={styles.statItem}>
-                <div style={styles.statNum}>{place.avg_rating ? place.avg_rating.toFixed(1) : '5.0'}</div>
-                <div style={styles.statLbl}>Điểm đánh giá</div>
-              </div>
-              <div style={styles.statItem}>
-                <div style={styles.statNum}>{reviews.length}</div>
-                <div style={styles.statLbl}>Đánh giá</div>
-              </div>
-              <div style={styles.statItem}>
-                <div style={styles.statNum}>{place.max_slots !== null ? place.max_slots : 'Vô hạn'}</div>
-                <div style={styles.statLbl}>Slots booking</div>
-              </div>
-            </div>
-
-            <div style={styles.detailRow}>
-              <div style={styles.detailItem}>
-                <Clock size={14} color="#888" />
+            {/* Detail items */}
+            <div style={s.detailsRow}>
+              <div style={s.detailItem}>
+                <div style={s.detailIcon}><Clock size={16} color="#38BDF8" /></div>
                 <div>
-                  <div style={styles.detailLabel}>Giờ mở cửa</div>
-                  <div style={styles.detailVal}>{place.opening_hours || 'Cả ngày'}</div>
+                  <div style={s.detailLabel}>Giờ mở cửa</div>
+                  <div style={s.detailVal}>{place.opening_hours || 'Cả ngày'}</div>
                 </div>
               </div>
-              <div style={styles.detailItem}>
-                <Ticket size={14} color="#888" />
+              <div style={s.detailItem}>
+                <div style={s.detailIcon}><Ticket size={16} color="#F59E0B" /></div>
                 <div>
-                  <div style={styles.detailLabel}>Tầm giá</div>
-                  <div style={styles.detailVal}>{place.price_range || 'Liên hệ'}</div>
+                  <div style={s.detailLabel}>Tầm giá</div>
+                  <div style={s.detailVal}>{place.price_range || 'Liên hệ'}</div>
                 </div>
               </div>
             </div>
 
-            <p style={styles.desc}>{place.description || 'Không có mô tả chi tiết cho địa điểm này.'}</p>
+            {/* Description */}
+            <p style={s.description}>{place.description || 'Không có mô tả chi tiết cho địa điểm này.'}</p>
           </div>
 
-          {/* REVIEWS SECTION */}
-          <div style={styles.reviewCard}>
-            <h3 style={styles.reviewTitle}>Đánh giá ({reviews.length})</h3>
+          {/* Reviews section */}
+          <div style={s.card} className="animate-fade-in-up delay-100">
+            <div style={s.reviewHeader}>
+              <h3 style={s.reviewTitle}>Đánh giá <span style={s.reviewCount}>({reviews.length})</span></h3>
+            </div>
 
-            {/* Form viết review (chỉ hiện khi đã đăng nhập) */}
+            {/* Write review */}
             {user ? (
-              <form onSubmit={handleReviewSubmit} style={styles.reviewForm}>
-                <div style={styles.ratingRow}>
-                  <span style={styles.ratingLabel}>Chọn số sao đánh giá:</span>
-                  {[1, 2, 3, 4, 5].map(s => (
-                    <Star
-                      key={s} size={20}
-                      fill={s <= rating ? '#854F0B' : 'none'}
-                      color={s <= rating ? '#854F0B' : '#ccc'}
-                      style={{ cursor: 'pointer' }}
-                      onClick={() => setRating(s)}
+              <form onSubmit={handleReviewSubmit} style={s.reviewForm}>
+                <div style={s.reviewFormHeader}>
+                  <div style={s.reviewAvatar}>
+                    {user.full_name?.charAt(0).toUpperCase() || 'U'}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={s.starPickerRow}>
+                      <span style={s.starPickerLabel}>Đánh giá của bạn:</span>
+                      {[1,2,3,4,5].map(s_idx => (
+                        <Star
+                          key={s_idx} size={22}
+                          fill={(hoverRating || rating) >= s_idx ? '#F59E0B' : 'none'}
+                          color={(hoverRating || rating) >= s_idx ? '#F59E0B' : 'rgba(255,255,255,0.2)'}
+                          style={{ cursor: 'pointer', transition: 'all 0.15s' }}
+                          onClick={() => setRating(s_idx)}
+                          onMouseEnter={() => setHoverRating(s_idx)}
+                          onMouseLeave={() => setHoverRating(0)}
+                        />
+                      ))}
+                    </div>
+                    <textarea
+                      style={s.reviewTextarea}
+                      placeholder="Chia sẻ trải nghiệm thực tế của bạn..."
+                      value={reviewText}
+                      onChange={e => setReviewText(e.target.value)}
+                      rows={3}
+                      required
                     />
-                  ))}
+                    <button type="submit" style={s.reviewSubmitBtn}>Gửi đánh giá</button>
+                  </div>
                 </div>
-                <textarea
-                  style={styles.reviewInput}
-                  placeholder="Chia sẻ trải nghiệm thực tế của bạn về địa điểm này..."
-                  value={reviewText}
-                  onChange={e => setReviewText(e.target.value)}
-                  rows={3}
-                  required
-                />
-                <button type="submit" style={styles.reviewSubmit}>Gửi đánh giá</button>
               </form>
             ) : (
-              <div style={styles.loginPrompt}>
-                <span>Đăng nhập để viết đánh giá cho địa điểm này.</span>
-                <button style={styles.loginBtn} onClick={() => navigate('/login')}>Đăng nhập</button>
+              <div style={s.loginPrompt}>
+                <span style={s.loginPromptText}>Đăng nhập để viết đánh giá cho địa điểm này</span>
+                <button style={s.loginPromptBtn} onClick={() => navigate('/login')}>Đăng nhập</button>
               </div>
             )}
 
-            {/* Danh sách review */}
+            {/* Review list */}
             {reviews.length === 0 ? (
-              <p style={styles.noReview}>Chưa có đánh giá nào. Hãy là người đầu tiên chia sẻ cảm nghĩ của bạn!</p>
+              <div style={s.noReview}>
+                <span style={{ fontSize: '28px' }}>💬</span>
+                <p>Chưa có đánh giá nào. Hãy là người đầu tiên!</p>
+              </div>
             ) : (
-              <div style={styles.reviewList}>
+              <div style={s.reviewList}>
                 {reviews.map(r => {
-                  const isReviewOwner = user && r.user?.username === user.username
+                  const isOwner = user && r.user?.username === user.username
                   return (
-                    <div key={r.id} style={styles.reviewItem}>
-                      <div style={styles.reviewHeader}>
-                        <div style={styles.avatar}>
+                    <div key={r.id} style={s.reviewItem}>
+                      <div style={s.reviewItemHeader}>
+                        <div style={s.reviewerAvatar}>
                           {r.user?.full_name ? r.user.full_name.charAt(0).toUpperCase() : 'U'}
                         </div>
                         <div style={{ flex: 1 }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <div style={styles.reviewerName}>{r.user?.full_name || r.user?.username || 'Thành viên'}</div>
-                            {isReviewOwner && (
+                          <div style={s.reviewerTopRow}>
+                            <span style={s.reviewerName}>{r.user?.full_name || r.user?.username || 'Thành viên'}</span>
+                            {isOwner && (
                               <button
-                                style={styles.deleteReviewBtn}
+                                style={s.deleteReviewBtn}
                                 onClick={() => handleDeleteReview(r.id)}
-                                title="Xóa đánh giá của bạn"
+                                title="Xóa đánh giá"
                               >
                                 <Trash2 size={13} />
                               </button>
                             )}
                           </div>
-                          <div style={styles.reviewMeta}>
-                            <div style={styles.stars}>
-                              {[1, 2, 3, 4, 5].map(s => (
-                                <Star key={s} size={12}
-                                  fill={s <= r.rating ? '#854F0B' : 'none'}
-                                  color={s <= r.rating ? '#854F0B' : '#ccc'}
-                                />
-                              ))}
-                            </div>
+                          <div style={s.starsRow}>
+                            {[1,2,3,4,5].map(s_idx => (
+                              <Star key={s_idx} size={12}
+                                fill={s_idx <= r.rating ? '#F59E0B' : 'none'}
+                                color={s_idx <= r.rating ? '#F59E0B' : 'rgba(255,255,255,0.15)'}
+                              />
+                            ))}
                           </div>
                         </div>
                       </div>
-                      <p style={styles.reviewContent}>{r.comment}</p>
+                      <p style={s.reviewComment}>{r.comment}</p>
                     </div>
                   )
                 })}
@@ -368,91 +367,96 @@ const PlaceDetail = () => {
           </div>
         </div>
 
-        {/* MAP SIDEBAR COLUMN */}
-        <div style={styles.sidebar}>
-          {/* BOOKING CARD */}
-          <div style={styles.bookingCard}>
-            <h3 style={styles.bookingCardTitle}>Đặt chỗ / Chọn Slot</h3>
-            {place.max_slots !== null && (
-              <div style={styles.bookingSlotsInfo}>
-                Số slot khả dụng: <strong>{place.max_slots}</strong>
-              </div>
-            )}
-            <form onSubmit={handleBookingSubmit} style={styles.bookingForm}>
-              <div style={styles.bookingFormGroup}>
-                <label style={styles.bookingLabel}><Calendar size={12} /> Ngày nhận</label>
+        {/* ── SIDEBAR ──────────────────────────────────────── */}
+        <div style={s.sidebar}>
+
+          {/* Booking card */}
+          <div style={s.sideCard} className="animate-fade-in-up delay-200">
+            <div style={s.sideCardHeader}>
+              <h3 style={s.sideCardTitle}>Đặt chỗ</h3>
+              {place.max_slots !== null && (
+                <span style={s.slotsTag}>
+                  🎟️ {place.max_slots} slot
+                </span>
+              )}
+            </div>
+
+            <form onSubmit={handleBookingSubmit} style={s.bookingForm}>
+              <div style={s.bookingField}>
+                <label style={s.bookingLabel}><Calendar size={12} /> Ngày nhận</label>
                 <input
-                  type="date"
-                  style={styles.bookingInput}
-                  value={checkIn}
-                  onChange={e => setCheckIn(e.target.value)}
-                  required
+                  type="date" style={s.bookingInput} className="input-premium"
+                  value={checkIn} onChange={e => setCheckIn(e.target.value)} required
                 />
               </div>
-              <div style={styles.bookingFormGroup}>
-                <label style={styles.bookingLabel}><Calendar size={12} /> Ngày trả</label>
+              <div style={s.bookingField}>
+                <label style={s.bookingLabel}><Calendar size={12} /> Ngày trả</label>
                 <input
-                  type="date"
-                  style={styles.bookingInput}
-                  value={checkOut}
-                  onChange={e => setCheckOut(e.target.value)}
-                  required
+                  type="date" style={s.bookingInput} className="input-premium"
+                  value={checkOut} onChange={e => setCheckOut(e.target.value)} required
                 />
               </div>
-              <div style={styles.bookingFormGroup}>
-                <label style={styles.bookingLabel}>Yêu cầu đặc biệt</label>
+              <div style={s.bookingField}>
+                <label style={s.bookingLabel}>Yêu cầu đặc biệt</label>
                 <textarea
-                  style={styles.bookingTextarea}
-                  placeholder="Ghi chú thêm (Ví dụ: phòng tầng cao, bàn view cửa sổ...)"
-                  value={bookingNote}
-                  onChange={e => setBookingNote(e.target.value)}
+                  style={s.bookingTextarea} className="input-premium"
+                  placeholder="Ghi chú (phòng tầng cao, view đẹp...)"
+                  value={bookingNote} onChange={e => setBookingNote(e.target.value)}
                   rows={2}
                 />
               </div>
-              
-              {/* Hiển thị tổng tiền tạm tính */}
-              {checkIn && checkOut && new Date(checkIn) <= new Date(checkOut) && (
-                <div style={styles.bookingPriceRow}>
-                  <span>Tạm tính ({Math.ceil((new Date(checkOut) - new Date(checkIn)) / (1000 * 60 * 60 * 24)) || 1} ngày):</span>
-                  <strong style={styles.bookingPriceVal}>
-                    {((Math.ceil((new Date(checkOut) - new Date(checkIn)) / (1000 * 60 * 60 * 24)) || 1) * getBasePrice()).toLocaleString('vi-VN')} VNĐ
-                  </strong>
+
+              {days > 0 && (
+                <div style={s.pricePreview}>
+                  <span style={s.pricePreviewLabel}>Tạm tính ({days} ngày)</span>
+                  <span style={s.pricePreviewVal}>
+                    {(days * getBasePrice()).toLocaleString('vi-VN')} VNĐ
+                  </span>
                 </div>
               )}
 
-              <button type="submit" style={styles.bookingSubmitBtn} disabled={isBookingLoading}>
-                {isBookingLoading ? 'Đang xử lý...' : 'Tiến hành Đặt chỗ'}
+              <button type="submit" style={s.bookingBtn} disabled={isBookingLoading}>
+                {isBookingLoading ? (
+                  <><Loader2 size={14} className="animate-spin" /> Đang xử lý...</>
+                ) : (
+                  <><CreditCard size={14} /> Tiến hành đặt chỗ</>
+                )}
               </button>
             </form>
           </div>
 
-          <div style={styles.mapBox}>
-            <iframe
-              width="100%"
-              height="180"
-              style={{ border: 0, display: 'block' }}
-              loading="lazy"
-              src={`https://maps.google.com/maps?q=${encodeURIComponent(place.address)}&output=embed`}
-              title="Google Maps"
-            />
-            <div style={styles.mapFooter}>
-              <MapPin size={13} color="#185FA5" style={{ flexShrink: 0 }} />
-              <a href={mapsUrl} target="_blank" rel="noreferrer" style={styles.mapLink}>
-                Mở Google Maps
-              </a>
+          {/* Map card */}
+          <div style={s.sideCard} className="animate-fade-in-up delay-300">
+            <h3 style={s.sideCardTitle}>Vị trí trên bản đồ</h3>
+            <div style={s.mapWrap}>
+              <iframe
+                width="100%" height="200"
+                style={{ border: 0, display: 'block', borderRadius: '10px' }}
+                loading="lazy"
+                src={`https://maps.google.com/maps?q=${encodeURIComponent(place.address)}&output=embed`}
+                title="Google Maps"
+              />
             </div>
+            <a href={mapsUrl} target="_blank" rel="noreferrer" style={s.mapLink}>
+              <MapPin size={13} color="#38BDF8" />
+              Mở Google Maps
+              <ExternalLink size={12} />
+            </a>
           </div>
         </div>
       </div>
 
-      {/* -------------------- PAYMENT MODAL -------------------- */}
+      {/* ── PAYMENT MODAL ─────────────────────────────────── */}
       {showPaymentModal && createdBooking && (
-        <div style={styles.modalOverlay}>
-          <div style={styles.modalCard}>
-            <div style={styles.modalHeader}>
-              <h3 style={styles.modalTitle}>Thanh toán Hóa đơn</h3>
+        <div style={s.modalOverlay} className="animate-fade-in">
+          <div style={s.modalCard} className="animate-scale-in">
+            {/* Modal header */}
+            <div style={s.modalHeader}>
+              <h3 style={s.modalTitle}>
+                {paymentSuccess ? '✅ Thanh toán thành công' : '💳 Thanh toán hóa đơn'}
+              </h3>
               {!paymentSuccess && (
-                <button style={styles.btnCloseModal} onClick={() => setShowPaymentModal(false)}>
+                <button style={s.modalCloseBtn} onClick={() => setShowPaymentModal(false)}>
                   <X size={18} />
                 </button>
               )}
@@ -460,85 +464,80 @@ const PlaceDetail = () => {
 
             {!paymentSuccess ? (
               <form onSubmit={handlePaymentSubmit}>
-                <div style={styles.paymentSummaryCard}>
-                  <div style={styles.summaryRow}>
-                    <span>Địa điểm:</span>
-                    <strong>{place.name}</strong>
+                {/* Summary */}
+                <div style={s.summaryCard}>
+                  <div style={s.summaryRow}>
+                    <span>Địa điểm</span>
+                    <strong style={s.summaryVal}>{place.name}</strong>
                   </div>
-                  <div style={styles.summaryRow}>
-                    <span>Thời gian:</span>
-                    <span>{createdBooking.checkIn} đến {createdBooking.checkOut}</span>
+                  <div style={s.summaryRow}>
+                    <span>Thời gian</span>
+                    <span style={s.summaryVal}>{createdBooking.checkIn} → {createdBooking.checkOut}</span>
                   </div>
-                  <div style={styles.summaryTotalRow}>
-                    <span>Tổng thanh toán:</span>
-                    <strong style={styles.totalPriceText}>
-                      {createdBooking.totalPrice.toLocaleString('vi-VN')} VNĐ
-                    </strong>
+                  <div style={{ ...s.summaryRow, ...s.summaryTotalRow }}>
+                    <span>Tổng thanh toán</span>
+                    <strong style={s.totalPrice}>{createdBooking.totalPrice?.toLocaleString('vi-VN')} VNĐ</strong>
                   </div>
                 </div>
 
-                <div style={styles.paymentMethodGroup}>
-                  <label style={styles.modalLabel}>Chọn phương thức thanh toán</label>
-                  <div style={styles.paymentMethodsGrid}>
-                    {[
-                      { id: 'MOMO', name: 'Ví MoMo', icon: '🌸' },
-                      { id: 'VNPAY', name: 'Cổng VNPAY', icon: '💎' },
-                      { id: 'CARD', name: 'Thẻ Quốc tế', icon: '💳' }
-                    ].map(method => (
+                {/* Payment method */}
+                <div style={s.payMethodSection}>
+                  <p style={s.payMethodLabel}>Chọn phương thức thanh toán</p>
+                  <div style={s.payMethodGrid}>
+                    {PAYMENT_METHODS.map(m => (
                       <div
-                        key={method.id}
+                        key={m.id}
                         style={{
-                          ...styles.paymentMethodCard,
-                          ...(selectedPaymentMethod === method.id ? styles.paymentMethodCardActive : {})
+                          ...s.payMethodCard,
+                          ...(selectedPaymentMethod === m.id ? {
+                            background: m.color,
+                            borderColor: m.border.replace('0.3', '0.6'),
+                            boxShadow: `0 0 12px ${m.border}`,
+                          } : {}),
                         }}
-                        onClick={() => setSelectedPaymentMethod(method.id)}
+                        onClick={() => setSelectedPaymentMethod(m.id)}
                       >
-                        <span style={styles.paymentMethodIcon}>{method.icon}</span>
-                        <span style={styles.paymentMethodName}>{method.name}</span>
+                        <span style={s.payMethodIcon}>{m.icon}</span>
+                        <span style={s.payMethodName}>{m.name}</span>
                       </div>
                     ))}
                   </div>
                 </div>
 
-                <button type="submit" style={styles.paymentConfirmBtn} disabled={isPaymentLoading}>
-                  {isPaymentLoading ? 'Đang kết nối cổng thanh toán...' : 'Xác nhận Thanh toán'}
+                <button type="submit" style={s.confirmBtn} disabled={isPaymentLoading}>
+                  {isPaymentLoading ? (
+                    <><Loader2 size={15} className="animate-spin" /> Đang kết nối cổng thanh toán...</>
+                  ) : (
+                    <>Xác nhận thanh toán</>
+                  )}
                 </button>
               </form>
             ) : (
-              <div style={styles.paymentSuccessContainer}>
-                <div style={styles.successIcon}>✓</div>
-                <h4 style={styles.successTitle}>Thanh toán thành công!</h4>
-                <p style={styles.successDesc}>Giao dịch đặt chỗ của bạn đã được xác nhận.</p>
-                <div style={styles.successDetailsCard}>
-                  <div style={styles.successDetailRow}>
-                    <span>Mã hóa đơn:</span>
-                    <strong>{paymentResult?.id?.substring(0,8)}...</strong>
-                  </div>
-                  <div style={styles.successDetailRow}>
-                    <span>Mã giao dịch:</span>
-                    <strong>{paymentResult?.transactionId || 'MOCK-TXN-12345'}</strong>
-                  </div>
-                  <div style={styles.successDetailRow}>
-                    <span>Phương thức:</span>
-                    <strong>{paymentResult?.method}</strong>
-                  </div>
-                  <div style={styles.successDetailRow}>
-                    <span>Số tiền:</span>
-                    <strong style={{ color: '#3B6D11' }}>
-                      {paymentResult?.amount?.toLocaleString('vi-VN')} VNĐ
-                    </strong>
-                  </div>
+              /* Success state */
+              <div style={s.successWrap}>
+                <div style={s.successIcon}>
+                  <CheckCircle size={36} color="#2DD4BF" />
+                </div>
+                <h4 style={s.successTitle}>Đặt chỗ thành công!</h4>
+                <p style={s.successSub}>Giao dịch của bạn đã được xác nhận.</p>
+                <div style={s.successDetails}>
+                  {[
+                    ['Mã hóa đơn', `${paymentResult?.id?.substring(0,8)}...`],
+                    ['Mã giao dịch', paymentResult?.transactionId || 'MOCK-TXN-12345'],
+                    ['Phương thức', paymentResult?.method],
+                    ['Số tiền', `${paymentResult?.amount?.toLocaleString('vi-VN')} VNĐ`],
+                  ].map(([label, val]) => (
+                    <div key={label} style={s.successRow}>
+                      <span style={s.successLabel}>{label}</span>
+                      <strong style={{ color: '#F8FAFC', fontSize: '13px' }}>{val}</strong>
+                    </div>
+                  ))}
                 </div>
                 <button
-                  style={styles.paymentCloseBtn}
-                  onClick={() => {
-                    setShowPaymentModal(false)
-                    setCheckIn('')
-                    setCheckOut('')
-                    setBookingNote('')
-                  }}
+                  style={s.doneBtn}
+                  onClick={() => { setShowPaymentModal(false); setCheckIn(''); setCheckOut(''); setBookingNote('') }}
                 >
-                  Hoàn tất
+                  <CheckCircle size={15} /> Hoàn tất
                 </button>
               </div>
             )}
@@ -549,291 +548,394 @@ const PlaceDetail = () => {
   )
 }
 
-const styles = {
-  page: { minHeight: '100vh', backgroundColor: '#f2f0ea', paddingBottom: '40px' },
-  loadingWrap: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: '100vh',
+const s = {
+  // Loading
+  loadingPage: {
+    minHeight: '100vh', background: 'var(--bg-dark)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    position: 'relative',
   },
-  notFound: { textAlign: 'center', padding: '60px', color: '#888' },
-  backBtnPlain: { padding: '8px 16px', borderRadius: '8px', border: '1px solid #ddd', cursor: 'pointer', fontFamily: 'inherit' },
+  loadingBg: {
+    position: 'absolute', inset: 0,
+    backgroundImage: `radial-gradient(ellipse at 50% 50%, rgba(56,189,248,0.06) 0%, transparent 60%)`,
+  },
+  loadingContent: {
+    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px',
+    position: 'relative', zIndex: 1,
+  },
+  loadingIconWrap: {
+    width: '68px', height: '68px', borderRadius: '50%',
+    background: 'rgba(56,189,248,0.1)', border: '1px solid rgba(56,189,248,0.2)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+  },
+  loadingText: { fontSize: '14px', color: '#64748B' },
 
-  heroWrap: { position: 'relative', height: '320px', overflow: 'hidden' },
+  notFoundPage: {
+    minHeight: '100vh', background: 'var(--bg-dark)',
+    display: 'flex', flexDirection: 'column',
+    alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '24px',
+  },
+  backBtnPlain: {
+    padding: '10px 20px', borderRadius: '10px',
+    background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
+    color: '#F8FAFC', fontSize: '13px', fontWeight: '500', cursor: 'pointer', fontFamily: 'inherit',
+  },
+
+  // Page
+  page: { minHeight: '100vh', background: 'var(--bg-dark)' },
+
+  // Hero
+  heroWrap: { position: 'relative', height: '380px', overflow: 'hidden' },
   heroImg: { width: '100%', height: '100%', objectFit: 'cover' },
   heroOverlay: {
     position: 'absolute', inset: 0,
-    background: 'linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, transparent 50%)',
+    background: 'linear-gradient(to top, rgba(10,15,30,0.95) 0%, rgba(10,15,30,0.4) 40%, rgba(10,15,30,0.5) 100%)',
+  },
+  heroMesh: {
+    position: 'absolute', inset: 0,
+    backgroundImage: `radial-gradient(ellipse at 20% 80%, rgba(56,189,248,0.08) 0%, transparent 40%)`,
+    pointerEvents: 'none',
   },
   backBtn: {
-    position: 'absolute', top: '16px', left: '16px',
+    position: 'absolute', top: '20px', left: '20px', zIndex: 2,
     display: 'flex', alignItems: 'center', gap: '6px',
-    padding: '7px 14px', borderRadius: '8px',
-    backgroundColor: 'rgba(255,255,255,0.9)',
-    border: 'none', cursor: 'pointer',
-    fontSize: '13px', fontWeight: '500', fontFamily: 'inherit',
+    padding: '8px 16px', borderRadius: '10px',
+    background: 'rgba(10,15,30,0.65)', backdropFilter: 'blur(10px)',
+    border: '1px solid rgba(255,255,255,0.12)',
+    color: 'rgba(248,250,252,0.9)', fontSize: '13px', fontWeight: '500',
+    cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s',
   },
   heroActions: {
-    position: 'absolute', top: '16px', right: '16px',
+    position: 'absolute', top: '20px', right: '20px', zIndex: 2,
     display: 'flex', gap: '8px',
   },
   actionBtn: {
-    width: '36px', height: '36px', borderRadius: '50%',
-    backgroundColor: 'rgba(255,255,255,0.9)',
-    border: 'none', cursor: 'pointer',
+    width: '40px', height: '40px', borderRadius: '50%',
+    background: 'rgba(10,15,30,0.65)', backdropFilter: 'blur(10px)',
+    border: '1px solid rgba(255,255,255,0.12)',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
+    cursor: 'pointer', transition: 'all 0.2s',
   },
-  actionBtnLiked: { backgroundColor: '#FCEBEB' },
+  actionBtnLiked: { background: 'rgba(239,68,68,0.2)', borderColor: 'rgba(239,68,68,0.4)' },
+  heroTitleWrap: {
+    position: 'absolute', bottom: '28px', left: '28px', right: '28px', zIndex: 2,
+  },
+  heroCatBadge: {
+    display: 'inline-block', fontSize: '11px', fontWeight: '700',
+    padding: '4px 12px', borderRadius: '6px', marginBottom: '10px',
+    background: 'rgba(56,189,248,0.15)', border: '1px solid rgba(56,189,248,0.3)',
+    color: '#38BDF8', letterSpacing: '0.05em',
+  },
+  heroName: {
+    fontSize: '32px', fontWeight: '900', color: '#F8FAFC',
+    letterSpacing: '-0.5px', marginBottom: '8px', lineHeight: 1.2,
+    textShadow: '0 2px 12px rgba(0,0,0,0.5)',
+  },
+  heroAddr: {
+    display: 'flex', alignItems: 'center', gap: '6px',
+    fontSize: '13px', color: 'rgba(248,250,252,0.7)',
+  },
 
+  // Body layout
   body: {
     maxWidth: '1200px', margin: '0 auto',
-    padding: '24px', display: 'grid',
-    gridTemplateColumns: '1fr 280px', gap: '20px',
+    padding: '28px 24px 60px',
+    display: 'grid', gridTemplateColumns: '1fr 300px', gap: '22px',
   },
-  main: { display: 'flex', flexDirection: 'column', gap: '16px' },
+  main: { display: 'flex', flexDirection: 'column', gap: '18px' },
+  sidebar: { display: 'flex', flexDirection: 'column', gap: '16px' },
 
-  infoCard: {
-    backgroundColor: '#fff', borderRadius: '14px',
-    border: '1px solid #eee', padding: '20px',
+  // Card (main)
+  card: {
+    background: 'var(--bg-surface)',
+    border: '1px solid rgba(255,255,255,0.07)',
+    borderRadius: '18px', padding: '22px',
   },
-  infoTop: {
-    display: 'flex', justifyContent: 'space-between',
-    alignItems: 'flex-start', marginBottom: '16px', gap: '12px',
+
+  // Info top
+  infoTopRow: {
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+    gap: '16px', marginBottom: '20px',
+    flexWrap: 'wrap',
   },
-  catBadge: {
-    display: 'inline-block',
-    fontSize: '11px', padding: '3px 10px', borderRadius: '20px',
-    backgroundColor: '#E6F1FB', color: '#185FA5',
-    fontWeight: '500', marginBottom: '8px',
+  statsRow: { display: 'flex', alignItems: 'center', gap: '0' },
+  statItem: { textAlign: 'center', padding: '0 20px' },
+  statNum: {
+    fontSize: '22px', fontWeight: '800',
+    background: 'linear-gradient(135deg, #38BDF8, #818CF8)',
+    WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
+    marginBottom: '3px',
   },
-  name: { fontSize: '22px', fontWeight: '700', marginBottom: '6px', color: '#1a1a18' },
-  addr: {
-    fontSize: '13px', color: '#aaa',
-    display: 'flex', alignItems: 'center', gap: '4px',
+  statLabel: { fontSize: '11px', color: '#64748B' },
+  statDivider: {
+    width: '1px', height: '36px',
+    background: 'rgba(255,255,255,0.06)',
   },
-  addBtn: {
-    display: 'flex', alignItems: 'center', gap: '6px',
-    padding: '8px 16px', borderRadius: '8px',
-    backgroundColor: '#185FA5', color: '#fff',
-    border: 'none', cursor: 'pointer',
-    fontSize: '13px', fontWeight: '500',
-    whiteSpace: 'nowrap', fontFamily: 'inherit',
+  addToTripBtn: {
+    display: 'flex', alignItems: 'center', gap: '7px',
+    padding: '10px 18px', borderRadius: '10px', border: 'none',
+    background: 'linear-gradient(135deg, #38BDF8, #818CF8)',
+    color: '#0A0F1E', fontSize: '13px', fontWeight: '700',
+    cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
+    boxShadow: '0 0 16px rgba(56,189,248,0.3)',
+    transition: 'all 0.2s ease',
   },
-  statsRow: {
-    display: 'grid', gridTemplateColumns: 'repeat(3,1fr)',
-    borderTop: '1px solid #eee', borderBottom: '1px solid #eee',
-    margin: '0 0 16px', padding: '12px 0',
+
+  // Detail items
+  detailsRow: {
+    display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '20px',
   },
-  statItem: { textAlign: 'center' },
-  statNum: { fontSize: '20px', fontWeight: '700', color: '#185FA5', marginBottom: '2px' },
-  statLbl: { fontSize: '11px', color: '#aaa' },
-  detailRow: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '16px' },
   detailItem: {
-    display: 'flex', gap: '8px', alignItems: 'flex-start',
-    padding: '10px', backgroundColor: '#f7f6f2', borderRadius: '8px',
+    display: 'flex', gap: '12px', alignItems: 'center',
+    padding: '14px 16px', borderRadius: '12px',
+    background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
   },
-  detailLabel: { fontSize: '11px', color: '#aaa', marginBottom: '2px' },
-  detailVal: { fontSize: '13px', fontWeight: '500', color: '#1a1a18' },
-  desc: { fontSize: '14px', color: '#555', lineHeight: 1.7 },
+  detailIcon: {
+    width: '38px', height: '38px', borderRadius: '10px', flexShrink: 0,
+    background: 'rgba(56,189,248,0.08)', border: '1px solid rgba(56,189,248,0.15)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+  },
+  detailLabel: { fontSize: '11px', color: '#64748B', marginBottom: '3px', fontWeight: '500' },
+  detailVal: { fontSize: '14px', fontWeight: '600', color: '#F8FAFC' },
+  description: { fontSize: '14px', color: '#94A3B8', lineHeight: 1.75 },
 
-  reviewCard: {
-    backgroundColor: '#fff', borderRadius: '14px',
-    border: '1px solid #eee', padding: '20px',
+  // Reviews
+  reviewHeader: { marginBottom: '20px' },
+  reviewTitle: { fontSize: '17px', fontWeight: '700', color: '#F8FAFC' },
+  reviewCount: { color: '#64748B', fontWeight: '400' },
+  reviewForm: {
+    marginBottom: '24px', paddingBottom: '20px',
+    borderBottom: '1px solid rgba(255,255,255,0.06)',
   },
-  reviewTitle: { fontSize: '16px', fontWeight: '600', marginBottom: '16px', color: '#1a1a18' },
-  reviewForm: { marginBottom: '24px', borderBottom: '1px solid #eee', paddingBottom: '20px' },
-  ratingRow: { display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' },
-  ratingLabel: { fontSize: '13px', color: '#555', marginRight: '4px' },
-  reviewInput: {
-    width: '100%', padding: '10px 12px',
-    border: '1px solid #ddd', borderRadius: '8px',
-    fontSize: '13px', resize: 'vertical',
-    fontFamily: 'inherit', marginBottom: '10px',
-    boxSizing: 'border-box', color: '#1a1a18',
+  reviewFormHeader: { display: 'flex', gap: '14px' },
+  reviewAvatar: {
+    width: '38px', height: '38px', borderRadius: '50%', flexShrink: 0,
+    background: 'linear-gradient(135deg, #38BDF8, #818CF8)',
+    color: '#0A0F1E', display: 'flex', alignItems: 'center', justifyContent: 'center',
+    fontSize: '15px', fontWeight: '700',
   },
-  reviewSubmit: {
-    padding: '8px 20px', borderRadius: '8px',
-    backgroundColor: '#185FA5', color: '#fff',
-    border: 'none', cursor: 'pointer',
-    fontSize: '13px', fontWeight: '500', fontFamily: 'inherit',
+  starPickerRow: {
+    display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px',
+  },
+  starPickerLabel: { fontSize: '13px', color: '#64748B', marginRight: '4px' },
+  reviewTextarea: {
+    width: '100%', boxSizing: 'border-box',
+    padding: '10px 14px',
+    background: 'rgba(255,255,255,0.05)',
+    border: '1px solid rgba(255,255,255,0.08)',
+    borderRadius: '10px', fontSize: '13px',
+    color: '#F8FAFC', fontFamily: 'inherit',
+    resize: 'vertical', outline: 'none',
+    marginBottom: '10px',
+    transition: 'border-color 0.2s, box-shadow 0.2s',
+  },
+  reviewSubmitBtn: {
+    display: 'flex', alignItems: 'center', gap: '7px',
+    padding: '9px 20px', borderRadius: '8px', border: 'none',
+    background: 'linear-gradient(135deg, #38BDF8, #818CF8)',
+    color: '#0A0F1E', fontSize: '13px', fontWeight: '700',
+    cursor: 'pointer', fontFamily: 'inherit',
   },
   loginPrompt: {
     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-    padding: '12px', backgroundColor: '#f7f6f2',
-    borderRadius: '8px', marginBottom: '16px',
-    fontSize: '13px', color: '#555',
+    padding: '14px 16px', borderRadius: '10px',
+    background: 'rgba(56,189,248,0.05)', border: '1px solid rgba(56,189,248,0.15)',
+    marginBottom: '20px', gap: '12px',
   },
-  loginBtn: {
-    padding: '6px 14px', borderRadius: '6px',
-    backgroundColor: '#185FA5', color: '#fff',
-    border: 'none', cursor: 'pointer',
-    fontSize: '12px', fontFamily: 'inherit',
+  loginPromptText: { fontSize: '13px', color: '#64748B' },
+  loginPromptBtn: {
+    padding: '7px 16px', borderRadius: '8px', border: 'none',
+    background: 'linear-gradient(135deg, #38BDF8, #818CF8)',
+    color: '#0A0F1E', fontSize: '12px', fontWeight: '700',
+    cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
   },
-  noReview: { fontSize: '13px', color: '#aaa', textAlign: 'center', padding: '20px' },
-  reviewList: { display: 'flex', flexDirection: 'column', gap: '14px' },
-  reviewItem: { padding: '12px', backgroundColor: '#f7f6f2', borderRadius: '10px' },
-  reviewHeader: { display: 'flex', gap: '10px', marginBottom: '8px' },
-  avatar: {
-    width: '32px', height: '32px', borderRadius: '50%',
-    backgroundColor: '#185FA5', color: '#fff',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    fontSize: '13px', fontWeight: '600', flexShrink: 0,
+  noReview: {
+    textAlign: 'center', padding: '32px', color: '#64748B',
+    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px',
+    fontSize: '13px',
   },
-  reviewerName: { fontSize: '13px', fontWeight: '600', color: '#1a1a18' },
-  reviewMeta: { display: 'flex', alignItems: 'center', gap: '8px' },
-  stars: { display: 'flex', gap: '2px' },
-  reviewContent: { fontSize: '13px', color: '#555', lineHeight: 1.6 },
-
+  reviewList: { display: 'flex', flexDirection: 'column', gap: '12px' },
+  reviewItem: {
+    padding: '14px 16px', borderRadius: '12px',
+    background: 'rgba(255,255,255,0.03)',
+    border: '1px solid rgba(255,255,255,0.06)',
+  },
+  reviewItemHeader: { display: 'flex', gap: '12px', marginBottom: '10px' },
+  reviewerAvatar: {
+    width: '34px', height: '34px', borderRadius: '50%', flexShrink: 0,
+    background: 'rgba(129,140,248,0.15)', border: '1px solid rgba(129,140,248,0.25)',
+    color: '#818CF8', display: 'flex', alignItems: 'center', justifyContent: 'center',
+    fontSize: '13px', fontWeight: '700',
+  },
+  reviewerTopRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '5px' },
+  reviewerName: { fontSize: '13px', fontWeight: '600', color: '#F8FAFC' },
   deleteReviewBtn: {
-    border: 'none',
-    backgroundColor: 'transparent',
-    color: '#A32D2D',
-    cursor: 'pointer',
-    padding: '4px',
-    display: 'flex',
-    alignItems: 'center',
-    borderRadius: '4px',
-    transition: 'background-color 0.2s',
-    '&:hover': {
-      backgroundColor: '#FCEBEB',
-    }
+    background: 'none', border: 'none', cursor: 'pointer',
+    color: '#EF4444', padding: '3px 6px', borderRadius: '6px',
+    display: 'flex', alignItems: 'center', transition: 'all 0.2s',
+  },
+  starsRow: { display: 'flex', gap: '2px' },
+  reviewComment: { fontSize: '13px', color: '#94A3B8', lineHeight: 1.65 },
+
+  // Sidebar cards
+  sideCard: {
+    background: 'var(--bg-surface)',
+    border: '1px solid rgba(255,255,255,0.07)',
+    borderRadius: '16px', padding: '18px',
+  },
+  sideCardHeader: {
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px',
+  },
+  sideCardTitle: { fontSize: '15px', fontWeight: '700', color: '#F8FAFC' },
+  slotsTag: {
+    fontSize: '11px', fontWeight: '600', color: '#F59E0B',
+    background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.25)',
+    padding: '3px 10px', borderRadius: '6px',
   },
 
-  sidebar: { display: 'flex', flexDirection: 'column', gap: '12px' },
-  mapBox: {
-    backgroundColor: '#fff', borderRadius: '14px',
-    border: '1px solid #eee', overflow: 'hidden',
+  // Booking form
+  bookingForm: { display: 'flex', flexDirection: 'column', gap: '12px' },
+  bookingField: { display: 'flex', flexDirection: 'column', gap: '6px' },
+  bookingLabel: {
+    display: 'flex', alignItems: 'center', gap: '5px',
+    fontSize: '11px', fontWeight: '600', color: '#64748B', letterSpacing: '0.03em',
   },
-  mapFooter: {
-    display: 'flex', alignItems: 'center', gap: '6px',
-    padding: '10px 12px',
-    borderTop: '1px solid #eee',
-    backgroundColor: '#fff',
-  },
-  mapLink: {
-    fontSize: '12px', color: '#185FA5',
-    textDecoration: 'none', fontWeight: '500',
-  },
-
-  // --- BOOKING CARD STYLES ---
-  bookingCard: {
-    backgroundColor: '#fff', borderRadius: '14px',
-    border: '1px solid #eee', padding: '16px',
-    boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
-    marginBottom: '12px',
-  },
-  bookingCardTitle: { fontSize: '15px', fontWeight: '700', color: '#1a1a18', marginBottom: '8px' },
-  bookingSlotsInfo: {
-    fontSize: '11px', color: '#854F0B', backgroundColor: '#FDF2E2',
-    padding: '6px 10px', borderRadius: '6px', marginBottom: '12px',
-  },
-  bookingForm: { display: 'flex', flexDirection: 'column', gap: '10px' },
-  bookingFormGroup: { display: 'flex', flexDirection: 'column', gap: '4px' },
-  bookingLabel: { fontSize: '11px', fontWeight: '600', color: '#555', display: 'flex', alignItems: 'center', gap: '4px' },
   bookingInput: {
-    padding: '8px 10px', border: '1px solid #ddd', borderRadius: '6px',
-    fontSize: '12px', outline: 'none', fontFamily: 'inherit', color: '#333',
-    boxSizing: 'border-box', width: '100%',
+    width: '100%', boxSizing: 'border-box',
+    padding: '10px 12px', borderRadius: '10px',
+    background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)',
+    color: '#F8FAFC', fontSize: '13px', fontFamily: 'inherit', outline: 'none',
+    transition: 'border-color 0.2s, box-shadow 0.2s',
   },
   bookingTextarea: {
-    padding: '8px 10px', border: '1px solid #ddd', borderRadius: '6px',
-    fontSize: '12px', outline: 'none', fontFamily: 'inherit', resize: 'none',
-    boxSizing: 'border-box', width: '100%', color: '#333',
+    width: '100%', boxSizing: 'border-box',
+    padding: '10px 12px', borderRadius: '10px',
+    background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)',
+    color: '#F8FAFC', fontSize: '13px', fontFamily: 'inherit', outline: 'none',
+    resize: 'none', transition: 'border-color 0.2s, box-shadow 0.2s',
   },
-  bookingPriceRow: {
-    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-    padding: '8px 0', borderTop: '1px dashed #eee', marginTop: '4px',
-    fontSize: '12px', color: '#666',
+  pricePreview: {
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+    padding: '10px 14px', borderRadius: '10px',
+    background: 'rgba(56,189,248,0.06)', border: '1px solid rgba(56,189,248,0.15)',
+    fontSize: '12px',
   },
-  bookingPriceVal: { color: '#185FA5', fontSize: '13px', fontWeight: '700' },
-  bookingSubmitBtn: {
-    padding: '10px', borderRadius: '8px', border: 'none',
-    backgroundColor: '#185FA5', color: '#fff', fontSize: '13px',
-    fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit',
-    transition: 'all 0.2s',
+  pricePreviewLabel: { color: '#64748B' },
+  pricePreviewVal: { color: '#38BDF8', fontWeight: '700', fontSize: '14px' },
+  bookingBtn: {
+    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+    padding: '12px', borderRadius: '10px', border: 'none',
+    background: 'linear-gradient(135deg, #38BDF8, #818CF8)',
+    color: '#0A0F1E', fontSize: '13px', fontWeight: '700',
+    cursor: 'pointer', fontFamily: 'inherit',
+    boxShadow: '0 0 16px rgba(56,189,248,0.3)',
+    transition: 'all 0.2s ease',
   },
 
-  // --- MODAL & PAYMENT STYLES ---
+  // Map
+  mapWrap: { marginBottom: '12px', borderRadius: '10px', overflow: 'hidden' },
+  mapLink: {
+    display: 'flex', alignItems: 'center', gap: '6px',
+    fontSize: '13px', color: '#38BDF8', fontWeight: '600',
+    textDecoration: 'none', padding: '4px 0',
+    transition: 'gap 0.2s',
+  },
+
+  // Modal
   modalOverlay: {
     position: 'fixed', inset: 0, zIndex: 1000,
-    backgroundColor: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    padding: '20px',
+    background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px',
   },
   modalCard: {
-    backgroundColor: '#fff', borderRadius: '16px',
-    width: '100%', maxWidth: '440px',
-    boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
-    padding: '24px', boxSizing: 'border-box',
+    background: 'var(--bg-surface)',
+    border: '1px solid rgba(255,255,255,0.1)',
+    borderRadius: '20px', width: '100%', maxWidth: '460px',
+    padding: '28px', boxSizing: 'border-box',
+    boxShadow: '0 30px 80px rgba(0,0,0,0.6)',
   },
   modalHeader: {
     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-    borderBottom: '1px solid #f2f2f2', paddingBottom: '12px',
-    marginBottom: '16px',
+    marginBottom: '20px', paddingBottom: '16px',
+    borderBottom: '1px solid rgba(255,255,255,0.06)',
   },
-  modalTitle: { fontSize: '16px', fontWeight: '700', color: '#1a1a18' },
-  btnCloseModal: {
-    border: 'none', background: 'none', cursor: 'pointer',
-    color: '#888', padding: '4px', borderRadius: '50%',
-    display: 'flex', alignItems: 'center',
-  },
-  paymentSummaryCard: {
-    backgroundColor: '#f7f6f2', borderRadius: '10px',
-    padding: '14px', display: 'flex', flexDirection: 'column',
-    gap: '8px', marginBottom: '16px', border: '1px solid #eee',
-  },
-  summaryRow: { display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#555' },
-  summaryTotalRow: {
-    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-    borderTop: '1px solid #ddd', paddingTop: '8px', marginTop: '4px',
-    fontSize: '13px', color: '#1a1a18',
-  },
-  totalPriceText: { color: '#A32D2D', fontSize: '15px', fontWeight: '700' },
-  paymentMethodGroup: { display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px' },
-  modalLabel: { fontSize: '12px', fontWeight: '600', color: '#444' },
-  paymentMethodsGrid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' },
-  paymentMethodCard: {
-    border: '1px solid #ddd', borderRadius: '8px',
-    padding: '12px 6px', textAlign: 'center', cursor: 'pointer',
-    transition: 'all 0.2s', backgroundColor: '#fff',
-    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px',
-  },
-  paymentMethodCardActive: {
-    borderColor: '#185FA5', backgroundColor: '#F0F6FC',
-    boxShadow: '0 0 0 2px rgba(24,95,165,0.15)',
-  },
-  paymentMethodIcon: { fontSize: '18px' },
-  paymentMethodName: { fontSize: '11px', fontWeight: '600', color: '#333' },
-  paymentConfirmBtn: {
-    width: '100%', padding: '12px', borderRadius: '8px', border: 'none',
-    backgroundColor: '#185FA5', color: '#fff', fontSize: '14px',
-    fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit',
-    boxShadow: '0 4px 12px rgba(24,95,165,0.25)',
+  modalTitle: { fontSize: '17px', fontWeight: '700', color: '#F8FAFC' },
+  modalCloseBtn: {
+    background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)',
+    borderRadius: '8px', width: '34px', height: '34px',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    cursor: 'pointer', color: '#64748B', transition: 'all 0.2s',
   },
 
-  // SUCCESS STATE STYLES
-  paymentSuccessContainer: { textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px 0' },
+  // Summary
+  summaryCard: {
+    background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
+    borderRadius: '12px', padding: '14px 16px',
+    display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px',
+  },
+  summaryRow: {
+    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+    fontSize: '13px', color: '#64748B',
+  },
+  summaryVal: { color: '#F8FAFC', fontSize: '13px' },
+  summaryTotalRow: {
+    borderTop: '1px solid rgba(255,255,255,0.06)',
+    paddingTop: '10px', marginTop: '4px',
+  },
+  totalPrice: { color: '#38BDF8', fontSize: '16px', fontWeight: '800' },
+
+  // Payment methods
+  payMethodSection: { marginBottom: '20px' },
+  payMethodLabel: { fontSize: '12px', fontWeight: '600', color: '#64748B', marginBottom: '10px' },
+  payMethodGrid: { display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '10px' },
+  payMethodCard: {
+    border: '1px solid rgba(255,255,255,0.08)',
+    borderRadius: '12px', padding: '14px 8px',
+    textAlign: 'center', cursor: 'pointer',
+    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px',
+    background: 'rgba(255,255,255,0.03)',
+    transition: 'all 0.2s ease',
+  },
+  payMethodIcon: { fontSize: '22px' },
+  payMethodName: { fontSize: '11px', fontWeight: '600', color: '#94A3B8' },
+  confirmBtn: {
+    width: '100%', padding: '13px', borderRadius: '12px', border: 'none',
+    background: 'linear-gradient(135deg, #38BDF8, #818CF8)',
+    color: '#0A0F1E', fontSize: '14px', fontWeight: '700',
+    cursor: 'pointer', fontFamily: 'inherit',
+    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+    boxShadow: '0 0 24px rgba(56,189,248,0.3)',
+    transition: 'all 0.2s',
+  },
+
+  // Success
+  successWrap: {
+    display: 'flex', flexDirection: 'column', alignItems: 'center',
+    gap: '12px', textAlign: 'center',
+  },
   successIcon: {
-    width: '48px', height: '48px', borderRadius: '50%',
-    backgroundColor: '#EAF3DE', color: '#3B6D11', fontSize: '24px',
+    width: '72px', height: '72px', borderRadius: '50%',
+    background: 'rgba(45,212,191,0.1)', border: '1px solid rgba(45,212,191,0.25)',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
-    fontWeight: 'bold', marginBottom: '14px',
   },
-  successTitle: { fontSize: '18px', fontWeight: '700', color: '#1a1a18', marginBottom: '4px' },
-  successDesc: { fontSize: '13px', color: '#666', marginBottom: '16px' },
-  successDetailsCard: {
-    backgroundColor: '#f7f6f2', borderRadius: '10px',
-    border: '1px solid #eee', padding: '14px', width: '100%',
-    boxSizing: 'border-box', display: 'flex', flexDirection: 'column',
-    gap: '8px', marginBottom: '20px',
+  successTitle: { fontSize: '18px', fontWeight: '800', color: '#F8FAFC' },
+  successSub: { fontSize: '13px', color: '#64748B' },
+  successDetails: {
+    width: '100%', background: 'rgba(255,255,255,0.03)',
+    border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px',
+    padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '8px',
   },
-  successDetailRow: { display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#555' },
-  paymentCloseBtn: {
-    width: '100%', padding: '10px', borderRadius: '8px', border: 'none',
-    backgroundColor: '#3B6D11', color: '#fff', fontSize: '13px',
-    fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit',
+  successRow: {
+    display: 'flex', justifyContent: 'space-between',
+    fontSize: '12px', color: '#64748B',
+  },
+  successLabel: { fontSize: '12px' },
+  doneBtn: {
+    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+    width: '100%', padding: '12px', borderRadius: '12px', border: 'none',
+    background: 'linear-gradient(135deg, #2DD4BF, #38BDF8)',
+    color: '#0A0F1E', fontSize: '14px', fontWeight: '700',
+    cursor: 'pointer', fontFamily: 'inherit',
   },
 }
 

@@ -1,53 +1,62 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { MapPin, Calendar, DollarSign, Heart, Sparkles, Loader2, ArrowLeft } from 'lucide-react'
+import { MapPin, Calendar, DollarSign, Heart, Sparkles, ArrowLeft, Check } from 'lucide-react'
 import tripService from '../../services/tripService'
 
 const PREFERENCES = [
   { id: 'culture', name: '🏛️ Văn hóa & Lịch sử' },
   { id: 'food', name: '🍜 Ẩm thực đặc sản' },
-  { id: 'beach', name: '🏖️ Bãi biển & Nghỉ dưỡng' },
+  { id: 'beach', name: '🏖️ Biển & Nghỉ dưỡng' },
   { id: 'nature', name: '⛰️ Thiên nhiên & Trải nghiệm' },
   { id: 'photo', name: '📸 Check-in & Sống ảo' },
   { id: 'shopping', name: '🛍️ Mua sắm & Giải trí' },
 ]
 
 const BUDGET_OPTIONS = [
-  { id: 'budget', name: 'Giá rẻ', desc: 'Tối ưu chi phí tối đa' },
-  { id: 'moderate', name: 'Tiết kiệm', desc: 'Cân bằng giữa dịch vụ và chi phí' },
-  { id: 'luxury', name: 'Sang trọng', desc: 'Trải nghiệm dịch vụ cao cấp nhất' },
+  { id: 'budget',   icon: '💚', name: 'Tiết kiệm',  desc: 'Tối ưu chi phí, trải nghiệm đầy đủ', color: '#2DD4BF', glow: 'rgba(45,212,191,0.2)' },
+  { id: 'moderate', icon: '💙', name: 'Vừa phải',  desc: 'Cân bằng chất lượng và chi phí',    color: '#38BDF8', glow: 'rgba(56,189,248,0.2)' },
+  { id: 'luxury',   icon: '💜', name: 'Sang trọng', desc: 'Dịch vụ cao cấp, trải nghiệm đỉnh', color: '#818CF8', glow: 'rgba(129,140,248,0.2)' },
 ]
 
 const LOADING_MESSAGES = [
-  '🤖 Đang khởi tạo bộ não AI TravelPlanner...',
-  '🗺️ Đang nghiên cứu địa hình và cung đường tại điểm đến...',
-  '🏨 Đang quét danh sách khách sạn và nhà hàng phù hợp...',
-  '🍴 Đang chọn lọc tinh hoa ẩm thực địa phương...',
-  '📍 Đang tính toán thời gian di chuyển tối ưu nhất...',
-  '✨ Đang sắp xếp lịch trình hoàn chỉnh độc nhất vô nhị...',
+  { icon: '🤖', text: 'Khởi tạo bộ não AI TravelPlanner...' },
+  { icon: '🗺️', text: 'Nghiên cứu địa hình và cung đường...' },
+  { icon: '🏨', text: 'Quét danh sách khách sạn & nhà hàng...' },
+  { icon: '🍴', text: 'Chọn lọc tinh hoa ẩm thực địa phương...' },
+  { icon: '📍', text: 'Tính toán thời gian di chuyển tối ưu...' },
+  { icon: '✨', text: 'Hoàn thiện lịch trình độc nhất vô nhị...' },
 ]
 
 const CreateTrip = () => {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [msgIdx, setMsgIdx] = useState(0)
+  const [progress, setProgress] = useState(0)
 
-  // Form State
   const [destination, setDestination] = useState('')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [budget, setBudget] = useState('moderate')
   const [selectedPrefs, setSelectedPrefs] = useState([])
 
-  // Hiệu ứng chữ chạy khi tạo AI
+  // Loading animation
   useEffect(() => {
-    let interval
+    let msgInterval, progressInterval
     if (loading) {
-      interval = setInterval(() => {
+      msgInterval = setInterval(() => {
         setMsgIdx(prev => (prev + 1) % LOADING_MESSAGES.length)
-      }, 2500)
+      }, 2800)
+      progressInterval = setInterval(() => {
+        setProgress(prev => {
+          const step = Math.random() * 4 + 1
+          return Math.min(prev + step, 92)
+        })
+      }, 300)
+    } else {
+      setProgress(0)
+      setMsgIdx(0)
     }
-    return () => clearInterval(interval)
+    return () => { clearInterval(msgInterval); clearInterval(progressInterval) }
   }, [loading])
 
   const togglePref = (id) => {
@@ -62,132 +71,205 @@ const CreateTrip = () => {
       alert('Vui lòng điền đầy đủ Điểm đến và Thời gian chuyến đi!')
       return
     }
-
     if (new Date(startDate) > new Date(endDate)) {
       alert('Ngày bắt đầu không được lớn hơn ngày kết thúc!')
       return
     }
-
     setLoading(true)
-    setMsgIdx(0)
-
     try {
       const budgetObj = BUDGET_OPTIONS.find(b => b.id === budget)
       const preferencesNames = selectedPrefs.map(pId => PREFERENCES.find(p => p.id === pId).name)
-
       const payload = {
         destination: destination.trim(),
-        startDate,
-        endDate,
-        budget: budgetObj ? budgetObj.name : 'Tiết kiệm',
+        startDate, endDate,
+        budget: budgetObj ? budgetObj.name : 'Vừa phải',
         preferences: preferencesNames
       }
-
       const res = await tripService.generateTrip(payload)
       const generatedTrip = res.data.result
-      
-      // Chuyển hướng đến trang chi tiết lịch trình vừa tạo
-      navigate(`/trips/${generatedTrip.id}`)
+      setProgress(100)
+      setTimeout(() => navigate(`/trips/${generatedTrip.id}`), 400)
     } catch (err) {
       console.error(err)
-      alert(err.response?.data?.message || 'AI lập lịch trình thất bại. Vui lòng kiểm tra lại API Key hoặc kết nối mạng của bạn!')
-    } finally {
+      alert(err.response?.data?.message || 'AI lập lịch trình thất bại. Vui lòng kiểm tra lại API Key hoặc kết nối mạng!')
       setLoading(false)
     }
   }
 
+  // ── Loading screen ─────────────────────────────────────
   if (loading) {
+    const msg = LOADING_MESSAGES[msgIdx]
     return (
-      <div style={styles.loadingPage}>
-        <div style={styles.loadingCard}>
-          <Loader2 size={48} color="#185FA5" className="animate-spin" />
-          <div style={styles.loadingTitleRow}>
-            <Sparkles size={20} color="#854F0B" />
-            <h2 style={styles.loadingTitle}>AI Đang lên lịch trình cho bạn...</h2>
+      <div style={s.loadingPage}>
+        {/* Background mesh */}
+        <div style={s.loadingBgMesh} />
+
+        <div style={s.loadingCard} className="animate-scale-in">
+          {/* Animated icon */}
+          <div style={s.loadingIconRing} className="animate-pulse-glow">
+            <div style={s.loadingIconInner}>
+              <Sparkles size={32} color="#38BDF8" />
+            </div>
           </div>
-          <p style={styles.loadingMsg}>{LOADING_MESSAGES[msgIdx]}</p>
-          <span style={styles.loadingSub}>Quá trình này có thể mất từ 10 - 20 giây</span>
+
+          {/* Progress bar */}
+          <div style={s.progressBarWrap}>
+            <div style={{ ...s.progressBar, width: `${progress}%` }} />
+          </div>
+          <div style={s.progressLabel}>{Math.round(progress)}%</div>
+
+          {/* Message */}
+          <div style={s.loadingMsgWrap} key={msgIdx} className="animate-fade-in">
+            <span style={s.loadingIcon}>{msg.icon}</span>
+            <p style={s.loadingMsg}>{msg.text}</p>
+          </div>
+
+          <h2 style={s.loadingTitle}>AI đang lên lịch trình cho bạn...</h2>
+          <p style={s.loadingSub}>Quá trình này có thể mất 10–20 giây</p>
+
+          {/* Steps indicator */}
+          <div style={s.stepsRow}>
+            {LOADING_MESSAGES.map((m, i) => (
+              <div key={i} style={{
+                ...s.stepDot,
+                background: i <= msgIdx ? '#38BDF8' : 'rgba(255,255,255,0.1)',
+                transform: i === msgIdx ? 'scale(1.3)' : 'scale(1)',
+                boxShadow: i === msgIdx ? '0 0 8px rgba(56,189,248,0.6)' : 'none',
+              }} />
+            ))}
+          </div>
         </div>
       </div>
     )
   }
 
+  // ── Main form ──────────────────────────────────────────
   return (
-    <div style={styles.page}>
-      <div style={styles.container}>
-        {/* Back Button */}
-        <button style={styles.backBtn} onClick={() => navigate(-1)}>
-          <ArrowLeft size={16} /> Quay lại
+    <div style={s.page}>
+      {/* Background */}
+      <div style={s.pageMesh} />
+
+      <div style={s.container}>
+        {/* Back */}
+        <button style={s.backBtn} onClick={() => navigate(-1)}>
+          <ArrowLeft size={15} />
+          Quay lại
         </button>
 
-        {/* Title */}
-        <div style={styles.header}>
-          <h1 style={styles.title}>Lập kế hoạch bằng AI</h1>
-          <p style={styles.subtitle}>Chỉ với vài lựa chọn cơ bản, AI sẽ thiết kế riêng lịch trình hoàn hảo cho chuyến đi của bạn</p>
+        {/* Header */}
+        <div style={s.header} className="animate-fade-in-up">
+          <div style={s.headerBadge}>
+            <Sparkles size={13} color="#F59E0B" />
+            <span>Trí tuệ nhân tạo · Cá nhân hóa hoàn toàn</span>
+          </div>
+          <h1 style={s.title}>Lập kế hoạch bằng AI</h1>
+          <p style={s.subtitle}>
+            Chỉ với vài lựa chọn cơ bản, AI sẽ thiết kế riêng lịch trình hoàn hảo cho bạn
+          </p>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} style={styles.formCard}>
-          {/* Điểm đến */}
-          <div style={styles.formGroup}>
-            <label style={styles.label}><MapPin size={14} color="#185FA5" /> Điểm đến của bạn</label>
+        {/* Form card */}
+        <form onSubmit={handleSubmit} style={s.formCard} className="animate-fade-in-up delay-100">
+
+          {/* 1. Điểm đến */}
+          <div style={s.formSection}>
+            <div style={s.sectionLabel}>
+              <div style={{ ...s.sectionNum, background: 'rgba(56,189,248,0.12)', color: '#38BDF8', border: '1px solid rgba(56,189,248,0.25)' }}>1</div>
+              <div style={s.sectionTitle}><MapPin size={15} color="#38BDF8" /> Điểm đến</div>
+            </div>
             <input
-              style={styles.input}
+              style={s.input}
+              className="input-premium"
               required
-              placeholder="Ví dụ: Hà Nội, Đà Nẵng, Phú Quốc..."
+              placeholder="Ví dụ: Hà Nội, Đà Nẵng, Phú Quốc, Sapa..."
               value={destination}
               onChange={e => setDestination(e.target.value)}
             />
           </div>
 
-          {/* Thời gian */}
-          <div style={styles.formRow}>
-            <div style={styles.formGroup}>
-              <label style={styles.label}><Calendar size={14} color="#185FA5" /> Ngày khởi hành</label>
-              <input
-                style={styles.input}
-                type="date"
-                required
-                value={startDate}
-                onChange={e => setStartDate(e.target.value)}
-              />
+          <div style={s.divider} />
+
+          {/* 2. Thời gian */}
+          <div style={s.formSection}>
+            <div style={s.sectionLabel}>
+              <div style={{ ...s.sectionNum, background: 'rgba(45,212,191,0.12)', color: '#2DD4BF', border: '1px solid rgba(45,212,191,0.25)' }}>2</div>
+              <div style={s.sectionTitle}><Calendar size={15} color="#2DD4BF" /> Thời gian chuyến đi</div>
             </div>
-            <div style={styles.formGroup}>
-              <label style={styles.label}><Calendar size={14} color="#185FA5" /> Ngày kết thúc</label>
-              <input
-                style={styles.input}
-                type="date"
-                required
-                value={endDate}
-                onChange={e => setEndDate(e.target.value)}
-              />
+            <div style={s.dateRow}>
+              <div style={s.dateField}>
+                <label style={s.dateLabel}>Ngày khởi hành</label>
+                <input
+                  style={s.input}
+                  className="input-premium"
+                  type="date"
+                  required
+                  value={startDate}
+                  onChange={e => setStartDate(e.target.value)}
+                />
+              </div>
+              <div style={s.dateSep}>→</div>
+              <div style={s.dateField}>
+                <label style={s.dateLabel}>Ngày kết thúc</label>
+                <input
+                  style={s.input}
+                  className="input-premium"
+                  type="date"
+                  required
+                  value={endDate}
+                  onChange={e => setEndDate(e.target.value)}
+                />
+              </div>
             </div>
           </div>
 
-          {/* Ngân sách */}
-          <div style={styles.formGroup}>
-            <label style={styles.label}><DollarSign size={14} color="#185FA5" /> Mức ngân sách mong muốn</label>
-            <div style={styles.budgetGrid}>
-              {BUDGET_OPTIONS.map(opt => (
-                <div
-                  key={opt.id}
-                  style={{
-                    ...styles.budgetCard,
-                    ...(budget === opt.id ? styles.budgetCardActive : {})
-                  }}
-                  onClick={() => setBudget(opt.id)}
-                >
-                  <div style={styles.budgetTitle}>{opt.name}</div>
-                  <div style={styles.budgetDesc}>{opt.desc}</div>
-                </div>
-              ))}
+          <div style={s.divider} />
+
+          {/* 3. Ngân sách */}
+          <div style={s.formSection}>
+            <div style={s.sectionLabel}>
+              <div style={{ ...s.sectionNum, background: 'rgba(245,158,11,0.12)', color: '#F59E0B', border: '1px solid rgba(245,158,11,0.25)' }}>3</div>
+              <div style={s.sectionTitle}><DollarSign size={15} color="#F59E0B" /> Mức ngân sách</div>
+            </div>
+            <div style={s.budgetGrid}>
+              {BUDGET_OPTIONS.map(opt => {
+                const isSelected = budget === opt.id
+                return (
+                  <div
+                    key={opt.id}
+                    style={{
+                      ...s.budgetCard,
+                      ...(isSelected ? {
+                        borderColor: opt.color,
+                        background: `${opt.glow}`,
+                        boxShadow: `0 0 20px ${opt.glow}`,
+                      } : {}),
+                    }}
+                    onClick={() => setBudget(opt.id)}
+                  >
+                    {isSelected && (
+                      <div style={{ ...s.budgetCheck, color: opt.color }}>
+                        <Check size={12} strokeWidth={3} />
+                      </div>
+                    )}
+                    <div style={s.budgetIcon}>{opt.icon}</div>
+                    <div style={{ ...s.budgetName, color: isSelected ? opt.color : '#F8FAFC' }}>{opt.name}</div>
+                    <div style={s.budgetDesc}>{opt.desc}</div>
+                  </div>
+                )
+              })}
             </div>
           </div>
 
-          {/* Sở thích */}
-          <div style={styles.formGroup}>
-            <label style={styles.label}><Heart size={14} color="#185FA5" /> Bạn muốn trải nghiệm những gì?</label>
-            <div style={styles.prefsGrid}>
+          <div style={s.divider} />
+
+          {/* 4. Sở thích */}
+          <div style={s.formSection}>
+            <div style={s.sectionLabel}>
+              <div style={{ ...s.sectionNum, background: 'rgba(129,140,248,0.12)', color: '#818CF8', border: '1px solid rgba(129,140,248,0.25)' }}>4</div>
+              <div style={s.sectionTitle}><Heart size={15} color="#818CF8" /> Bạn muốn trải nghiệm gì?</div>
+            </div>
+            <p style={s.prefsHint}>Chọn một hoặc nhiều sở thích để AI cá nhân hóa lịch trình</p>
+            <div style={s.prefsGrid}>
               {PREFERENCES.map(pref => {
                 const isSelected = selectedPrefs.includes(pref.id)
                 return (
@@ -195,11 +277,12 @@ const CreateTrip = () => {
                     key={pref.id}
                     type="button"
                     style={{
-                      ...styles.prefChip,
-                      ...(isSelected ? styles.prefChipActive : {})
+                      ...s.prefChip,
+                      ...(isSelected ? s.prefChipActive : {}),
                     }}
                     onClick={() => togglePref(pref.id)}
                   >
+                    {isSelected && <Check size={11} strokeWidth={3} style={{ flexShrink: 0 }} />}
                     {pref.name}
                   </button>
                 )
@@ -208,97 +291,251 @@ const CreateTrip = () => {
           </div>
 
           {/* Submit */}
-          <button type="submit" style={styles.submitBtn}>
-            <Sparkles size={16} /> Lên lịch trình ngay với AI
+          <button type="submit" style={s.submitBtn}>
+            <Sparkles size={17} />
+            Tạo lịch trình với AI ngay
+            <span style={s.submitArrow}>→</span>
           </button>
+
+          <p style={s.submitNote}>
+            🤖 AI sẽ tạo lịch trình hoàn chỉnh trong 10–20 giây
+          </p>
         </form>
       </div>
     </div>
   )
 }
 
-const styles = {
-  page: { minHeight: '100vh', backgroundColor: '#f2f0ea', padding: '40px 24px' },
-  container: { maxWidth: '640px', margin: '0 auto' },
-  backBtn: {
-    display: 'flex', alignItems: 'center', gap: '6px',
-    backgroundColor: 'transparent', border: 'none',
-    color: '#666', fontSize: '13px', fontWeight: '500',
-    cursor: 'pointer', fontFamily: 'inherit', marginBottom: '20px',
+const s = {
+  // Page
+  page: {
+    minHeight: '100vh',
+    background: 'var(--bg-dark)',
+    padding: '40px 24px 60px',
+    position: 'relative',
+    overflow: 'hidden',
   },
-  header: { textAlign: 'center', marginBottom: '32px' },
-  title: { fontSize: '28px', fontWeight: '800', color: '#1a1a18', marginBottom: '8px' },
-  subtitle: { fontSize: '14px', color: '#666', lineHeight: 1.5 },
-  formCard: {
-    backgroundColor: '#fff', borderRadius: '16px',
-    border: '1px solid #e8e7e1', padding: '32px',
-    boxShadow: '0 2px 16px rgba(0,0,0,0.03)',
-    display: 'flex', flexDirection: 'column', gap: '24px',
+  pageMesh: {
+    position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0,
+    backgroundImage: `radial-gradient(ellipse at 15% 50%, rgba(56,189,248,0.07) 0%, transparent 50%),
+                      radial-gradient(ellipse at 85% 20%, rgba(129,140,248,0.07) 0%, transparent 50%)`,
   },
-  formGroup: { display: 'flex', flexDirection: 'column', gap: '8px' },
-  formRow: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' },
-  label: {
-    fontSize: '13px', fontWeight: '600', color: '#333',
-    display: 'flex', alignItems: 'center', gap: '6px',
-  },
-  input: {
-    width: '100%', boxSizing: 'border-box',
-    padding: '12px 16px', borderRadius: '10px',
-    border: '1px solid #ddd', fontSize: '14px',
-    outline: 'none', fontFamily: 'inherit', color: '#333',
-  },
-  budgetGrid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' },
-  budgetCard: {
-    border: '1px solid #ddd', borderRadius: '10px',
-    padding: '14px 10px', textAlign: 'center', cursor: 'pointer',
-    transition: 'all 0.2s', backgroundColor: '#fff',
-  },
-  budgetCardActive: {
-    borderColor: '#185FA5', backgroundColor: '#F0F6FC',
-    boxShadow: '0 0 0 2px rgba(24,95,165,0.15)',
-  },
-  budgetTitle: { fontSize: '14px', fontWeight: '700', color: '#1a1a18', marginBottom: '4px' },
-  budgetDesc: { fontSize: '10px', color: '#888', lineHeight: 1.3 },
-  prefsGrid: { display: 'flex', flexWrap: 'wrap', gap: '8px' },
-  prefChip: {
-    fontSize: '13px', padding: '8px 16px', borderRadius: '20px',
-    border: '1px solid #ddd', backgroundColor: '#fff',
-    color: '#555', cursor: 'pointer', fontFamily: 'inherit',
-    transition: 'all 0.2s',
-  },
-  prefChipActive: {
-    backgroundColor: '#185FA5', color: '#fff',
-    borderColor: '#185FA5', fontWeight: '500',
-  },
-  submitBtn: {
-    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-    padding: '14px', borderRadius: '10px', border: 'none',
-    backgroundColor: '#185FA5', color: '#fff', fontSize: '15px',
-    fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit',
-    boxShadow: '0 4px 12px rgba(24,95,165,0.25)',
-    marginTop: '10px', transition: 'all 0.2s',
+  container: {
+    maxWidth: '680px',
+    margin: '0 auto',
+    position: 'relative',
+    zIndex: 1,
   },
 
-  // Loading Screen Styles
-  loadingPage: {
-    minHeight: '100vh', backgroundColor: '#f2f0ea',
+  // Back
+  backBtn: {
+    display: 'flex', alignItems: 'center', gap: '6px',
+    background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)',
+    borderRadius: '10px', padding: '8px 14px',
+    color: '#94A3B8', fontSize: '13px', fontWeight: '500',
+    cursor: 'pointer', fontFamily: 'inherit', marginBottom: '28px',
+    transition: 'all 0.2s ease',
+  },
+
+  // Header
+  header: { textAlign: 'center', marginBottom: '36px' },
+  headerBadge: {
+    display: 'inline-flex', alignItems: 'center', gap: '6px',
+    padding: '5px 14px', borderRadius: '20px',
+    background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.25)',
+    fontSize: '11px', fontWeight: '700', color: '#F59E0B',
+    letterSpacing: '0.04em', marginBottom: '16px',
+  },
+  title: {
+    fontSize: '34px', fontWeight: '900', color: '#F8FAFC',
+    marginBottom: '10px', letterSpacing: '-0.5px',
+    background: 'linear-gradient(135deg, #F8FAFC 60%, #38BDF8 100%)',
+    WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+    backgroundClip: 'text',
+  },
+  subtitle: {
+    fontSize: '15px', color: '#64748B', lineHeight: 1.6,
+  },
+
+  // Form card
+  formCard: {
+    background: 'var(--bg-surface)',
+    border: '1px solid rgba(255,255,255,0.07)',
+    borderRadius: '24px',
+    padding: '36px',
+    display: 'flex', flexDirection: 'column', gap: '0',
+    boxShadow: '0 20px 60px rgba(0,0,0,0.35)',
+  },
+
+  formSection: {
+    padding: '24px 0',
+  },
+  divider: {
+    height: '1px',
+    background: 'rgba(255,255,255,0.06)',
+    margin: '0',
+  },
+  sectionLabel: {
+    display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px',
+  },
+  sectionNum: {
+    width: '26px', height: '26px', borderRadius: '8px', flexShrink: 0,
     display: 'flex', alignItems: 'center', justifyContent: 'center',
-    padding: '24px',
+    fontSize: '12px', fontWeight: '800',
+  },
+  sectionTitle: {
+    display: 'flex', alignItems: 'center', gap: '7px',
+    fontSize: '15px', fontWeight: '700', color: '#F8FAFC',
+  },
+
+  input: {
+    width: '100%', boxSizing: 'border-box',
+    padding: '13px 16px',
+    background: 'rgba(255,255,255,0.05)',
+    border: '1px solid rgba(255,255,255,0.08)',
+    borderRadius: '12px',
+    fontSize: '14px', color: '#F8FAFC',
+    fontFamily: 'inherit',
+    outline: 'none',
+    transition: 'border-color 0.2s, box-shadow 0.2s',
+  },
+
+  dateRow: {
+    display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: '12px', alignItems: 'end',
+  },
+  dateField: { display: 'flex', flexDirection: 'column', gap: '7px' },
+  dateLabel: { fontSize: '12px', fontWeight: '600', color: '#64748B', letterSpacing: '0.03em' },
+  dateSep: {
+    color: '#38BDF8', fontWeight: '700', fontSize: '18px',
+    paddingBottom: '13px', textAlign: 'center',
+  },
+
+  // Budget
+  budgetGrid: {
+    display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px',
+  },
+  budgetCard: {
+    border: '1px solid rgba(255,255,255,0.08)',
+    borderRadius: '14px', padding: '18px 14px',
+    textAlign: 'center', cursor: 'pointer',
+    transition: 'all 0.25s cubic-bezier(0.4,0,0.2,1)',
+    background: 'rgba(255,255,255,0.03)',
+    position: 'relative', overflow: 'hidden',
+  },
+  budgetCheck: {
+    position: 'absolute', top: '8px', right: '8px',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+  },
+  budgetIcon: { fontSize: '26px', marginBottom: '8px' },
+  budgetName: { fontSize: '14px', fontWeight: '700', marginBottom: '5px', transition: 'color 0.2s' },
+  budgetDesc: { fontSize: '11px', color: '#64748B', lineHeight: 1.4 },
+
+  // Preferences
+  prefsHint: { fontSize: '12px', color: '#64748B', marginBottom: '14px' },
+  prefsGrid: { display: 'flex', flexWrap: 'wrap', gap: '8px' },
+  prefChip: {
+    display: 'flex', alignItems: 'center', gap: '6px',
+    fontSize: '13px', padding: '9px 16px', borderRadius: '24px',
+    border: '1px solid rgba(255,255,255,0.1)',
+    background: 'rgba(255,255,255,0.04)', color: '#94A3B8',
+    cursor: 'pointer', fontFamily: 'inherit',
+    transition: 'all 0.2s ease',
+  },
+  prefChipActive: {
+    background: 'rgba(56,189,248,0.1)',
+    borderColor: 'rgba(56,189,248,0.4)',
+    color: '#38BDF8', fontWeight: '600',
+    boxShadow: '0 0 12px rgba(56,189,248,0.15)',
+  },
+
+  // Submit
+  submitBtn: {
+    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
+    padding: '16px', borderRadius: '14px', border: 'none',
+    background: 'linear-gradient(135deg, #38BDF8 0%, #818CF8 100%)',
+    backgroundSize: '200% 200%',
+    color: '#0A0F1E', fontSize: '16px', fontWeight: '800',
+    cursor: 'pointer', fontFamily: 'inherit',
+    boxShadow: '0 0 32px rgba(56,189,248,0.4)',
+    marginTop: '8px',
+    transition: 'all 0.2s ease',
+    animation: 'gradientShift 4s ease infinite',
+  },
+  submitArrow: { marginLeft: 'auto', fontSize: '18px' },
+  submitNote: {
+    textAlign: 'center', fontSize: '12px', color: '#64748B',
+    marginTop: '12px', lineHeight: 1.5,
+  },
+
+  // Loading
+  loadingPage: {
+    minHeight: '100vh',
+    background: 'var(--bg-dark)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    padding: '24px', position: 'relative', overflow: 'hidden',
+  },
+  loadingBgMesh: {
+    position: 'absolute', inset: 0, pointerEvents: 'none',
+    backgroundImage: `radial-gradient(ellipse at 30% 50%, rgba(56,189,248,0.1) 0%, transparent 50%),
+                      radial-gradient(ellipse at 70% 30%, rgba(129,140,248,0.1) 0%, transparent 50%)`,
+    animation: 'gradientShift 6s ease infinite',
+    backgroundSize: '200% 200%',
   },
   loadingCard: {
-    backgroundColor: '#fff', borderRadius: '20px',
-    border: '1px solid #e8e7e1', padding: '40px 32px',
-    maxWidth: '440px', width: '100%', textAlign: 'center',
-    boxShadow: '0 4px 24px rgba(0,0,0,0.06)',
-    display: 'flex', flexDirection: 'column', alignItems: 'center',
+    background: 'var(--bg-surface)',
+    border: '1px solid rgba(255,255,255,0.08)',
+    borderRadius: '28px', padding: '48px 40px',
+    maxWidth: '460px', width: '100%', textAlign: 'center',
+    boxShadow: '0 30px 80px rgba(0,0,0,0.5)',
+    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px',
+    position: 'relative', zIndex: 1,
   },
-  loadingTitleRow: {
-    display: 'flex', alignItems: 'center', gap: '8px',
-    marginTop: '20px', marginBottom: '10px',
+  loadingIconRing: {
+    width: '88px', height: '88px', borderRadius: '50%',
+    background: 'rgba(56,189,248,0.1)',
+    border: '2px solid rgba(56,189,248,0.3)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
   },
-  loadingTitle: { fontSize: '18px', fontWeight: '800', color: '#1a1a18' },
-  loadingMsg: { fontSize: '14px', color: '#854F0B', fontWeight: '500', marginBottom: '16px', minHeight: '20px' },
-  loadingSub: { fontSize: '11px', color: '#aaa' },
+  loadingIconInner: {
+    width: '64px', height: '64px', borderRadius: '50%',
+    background: 'rgba(56,189,248,0.08)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+  },
+  progressBarWrap: {
+    width: '100%', height: '4px', borderRadius: '2px',
+    background: 'rgba(255,255,255,0.06)',
+    overflow: 'hidden',
+  },
+  progressBar: {
+    height: '100%', borderRadius: '2px',
+    background: 'linear-gradient(90deg, #38BDF8, #818CF8)',
+    transition: 'width 0.3s ease',
+    boxShadow: '0 0 8px rgba(56,189,248,0.5)',
+  },
+  progressLabel: {
+    fontSize: '11px', color: '#38BDF8', fontWeight: '700',
+    letterSpacing: '0.05em',
+  },
+  loadingMsgWrap: {
+    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px',
+  },
+  loadingIcon: { fontSize: '32px' },
+  loadingMsg: {
+    fontSize: '15px', color: '#38BDF8', fontWeight: '600',
+    lineHeight: 1.5,
+  },
+  loadingTitle: {
+    fontSize: '20px', fontWeight: '800', color: '#F8FAFC',
+    lineHeight: 1.3,
+  },
+  loadingSub: { fontSize: '13px', color: '#64748B' },
+  stepsRow: {
+    display: 'flex', gap: '8px', alignItems: 'center',
+  },
+  stepDot: {
+    width: '8px', height: '8px', borderRadius: '50%',
+    transition: 'all 0.4s cubic-bezier(0.4,0,0.2,1)',
+  },
 }
 
 export default CreateTrip
