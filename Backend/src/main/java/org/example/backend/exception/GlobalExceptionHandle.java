@@ -20,6 +20,7 @@ public class GlobalExceptionHandle {
     @ExceptionHandler(value = Exception.class)
     public ResponseEntity<ApiResponse> handlingRuntimeRException(Exception ex)
     {
+        ex.printStackTrace(); // In ra log console để debug trên server
         ApiResponse<UserResponse> apiResponse = new ApiResponse<>();
         apiResponse.setCode(ErrorCode.UNAUTHORIZED_EXCEPTION.getCode());
         apiResponse.setMessage(ErrorCode.UNAUTHORIZED_EXCEPTION.getMessage());
