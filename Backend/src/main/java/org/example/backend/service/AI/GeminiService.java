@@ -47,13 +47,28 @@ public class GeminiService {
                 .content();
     }
     public Flux<String> chatStreamWithItinerary(String tripId, String systemPromptContext, String message) {
-        return chatClient.prompt()
-                .system(systemPromptContext)
-                .user(message)
-                .advisors(a -> a.param("chat_memory_conversation_id", tripId))
-                // Gọi hàm .stream() để nhận chữ chạy về liên tục
-                .stream()
-                .content();
+        try {
+            return chatClient.prompt()
+                    .system(systemPromptContext)
+                    .user(message)
+                    .advisors(a -> a.param("chat_memory_conversation_id", tripId))
+                    // Gọi hàm .stream() để nhận chữ chạy về liên tục
+                    .stream()
+                    .content()
+                    .onErrorResume(e -> {
+                        log.error("Lỗi stream chatbot Gemini: {}", e.getMessage(), e);
+                        String friendlyError = "⚠️ Trợ lý AI hiện đang bận hoặc quá tải. Vui lòng thử lại sau giây lát!";
+                        if (hasExceptionCauseContaining(e, "429") || hasExceptionCauseContaining(e, "quota")) {
+                            friendlyError = "⚠️ Hạn mức API Gemini của tài khoản đã hết (Lỗi 429). Vui lòng thử lại sau!";
+                        } else if (hasExceptionCauseContaining(e, "503") || hasExceptionCauseContaining(e, "high demand")) {
+                            friendlyError = "⚠️ Máy chủ Google AI đang bị quá tải (Lỗi 503). Vui lòng thử lại sau!";
+                        }
+                        return Flux.just(friendlyError);
+                    });
+        } catch (Exception e) {
+            log.error("Lỗi khởi tạo chatbot Gemini: {}", e.getMessage(), e);
+            return Flux.just("⚠️ Không thể khởi động chatbot AI lúc này: " + e.getMessage());
+        }
     }
 
     public TripAiResponse generateTripAiResponse(TripGenerateRequest request, List<Place> dbPlaces) {

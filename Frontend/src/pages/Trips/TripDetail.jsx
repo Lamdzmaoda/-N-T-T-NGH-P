@@ -2022,10 +2022,12 @@ const styles = {
   optionCard: {
     border: '1px solid #ddd', borderRadius: '10px', padding: '12px',
     cursor: 'pointer', backgroundColor: '#fff', transition: 'all 0.2s',
+    color: '#333',
   },
   optionCardActive: {
     borderColor: '#185FA5', backgroundColor: '#F0F6FC',
     boxShadow: '0 0 0 2px rgba(24,95,165,0.15)',
+    color: '#185FA5',
   },
   optionHeader: { display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#333', marginBottom: '6px' },
   optionBody: { display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#666' },
@@ -2038,10 +2040,12 @@ const styles = {
     border: '1px solid #ddd', borderRadius: '6px', padding: '8px',
     textAlign: 'center', cursor: 'pointer', backgroundColor: '#fff',
     fontSize: '10px', display: 'flex', flexDirection: 'column', gap: '2px',
+    color: '#333',
   },
   optionMiniCardActive: {
     borderColor: '#185FA5', backgroundColor: '#F0F6FC',
     boxShadow: '0 0 0 2px rgba(24,95,165,0.15)',
+    color: '#185FA5',
   },
   btnSaveTransport: {
     width: '100%', padding: '12px', borderRadius: '8px', border: 'none',

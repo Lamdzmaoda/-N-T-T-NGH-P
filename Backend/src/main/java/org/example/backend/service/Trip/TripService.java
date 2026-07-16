@@ -194,6 +194,9 @@ public class TripService {
         List<TripItinerary> itineraries = tripItineraryRepository.findByTripId(tripId);
         // 3. Nối thành đoạn văn bản mô tả để AI đọc hiểu ngữ cảnh
         StringBuilder context = new StringBuilder();
+        String displayName = (user.getFull_name() != null && !user.getFull_name().trim().isEmpty()) ? user.getFull_name() : user.getUsername();
+        context.append(String.format("Tên của người dùng bạn đang trò chuyện cùng: '%s'. Hãy xưng hô thân mật bằng tên của họ hoặc 'bạn' và xưng hô tự xưng là 'mình/trợ lý AI'.\n", displayName));
+        context.append("Nguyên tắc trả lời: Trả lời thật ngắn gọn, súc tích, đi thẳng vào vấn đề, dễ hiểu, tránh dông dài hay lặp lại các câu xã giao không cần thiết.\n");
         context.append(String.format("Đây là thông tin lịch trình của chuyến đi '%s'.\n", trip.getTitle()));
         context.append(String.format("Ngày đi: %s, Ngày về: %s.\n", trip.getStart_date(), trip.getEnd_date()));
         context.append("Chi tiết các hoạt động đã được lên lịch:\n");

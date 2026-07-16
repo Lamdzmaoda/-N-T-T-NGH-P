@@ -29,8 +29,7 @@ spring:
       genai:
         api-key: ${GEMINI_API_KEY}
         chat:
-          model: gemini-2.5-flash
-          response-mime-type: application/json
+          model: gemini-3.5-flash
           temperature: 0.7
           google-search-retrieval: false
 
