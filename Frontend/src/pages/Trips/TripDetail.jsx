@@ -805,9 +805,7 @@ const TripDetail = () => {
       // Gọi fetch API kết nối với endpoint stream WebFlux của Backend
       const response = await fetch(`/travel-ai-planner/trips/${id}/chat?message=${encodeURIComponent(userMsg)}`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
-        }
+        credentials: 'include' // ✅ Gửi kèm HttpOnly Cookie chứa JWT accessToken
       })
 
       if (!response.ok) {

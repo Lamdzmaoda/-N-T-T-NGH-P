@@ -43,7 +43,8 @@ const UserTab = () => {
       dob: data.dob || '',
       roles: data.roles ? data.roles.map(r => r.name) : [],
       bio: data.bio || '',
-      avatarUrl: data.avatarUrl || ''
+      avatarUrl: data.avatarUrl || '',
+      password: ''
     })
   }
 
@@ -208,6 +209,18 @@ const UserTab = () => {
                   name="dob"
                   value={userForm.dob}
                   onChange={handleUserFormChange}
+                />
+              </div>
+
+              <div style={styles.formGroup}>
+                <label style={styles.modalLabel}>Mật khẩu mới (Để trống nếu không đổi)</label>
+                <input
+                  style={styles.modalInput}
+                  type="password"
+                  name="password"
+                  value={userForm.password}
+                  onChange={handleUserFormChange}
+                  placeholder="Nhập mật khẩu mới (tối thiểu 8 ký tự)"
                 />
               </div>
 
