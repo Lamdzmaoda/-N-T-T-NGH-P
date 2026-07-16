@@ -91,12 +91,36 @@ public class GeminiService {
         // 4. Gọi ChatClient và ép kiểu dữ liệu trả về trực tiếp
         log.info("Đang gọi Gemini sinh lịch trình cấu trúc...");
 
-        return chatClient.prompt()
-                .system(systemPrompt)
-                .user("Hãy lập lịch trình chi tiết.")
-                // ✅ Ép kiểu dữ liệu gốc (Native Structured Output)
-                .call()
-                .entity(TripAiResponse.class);
+        try {
+            return chatClient.prompt()
+                    .system(systemPrompt)
+                    .user("Hãy lập lịch trình chi tiết.")
+                    // ✅ Ép kiểu dữ liệu gốc (Native Structured Output)
+                    .call()
+                    .entity(TripAiResponse.class);
+        } catch (Exception e) {
+            log.error("Lỗi gọi Gemini sinh lịch trình: {}", e.getMessage(), e);
+            if (hasExceptionCauseContaining(e, "429") || hasExceptionCauseContaining(e, "quota")) {
+                throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.TOO_MANY_REQUESTS,
+                        "Yêu cầu tạo lịch trình bằng AI đang bị quá tải hoặc vượt quá giới hạn lượt gọi (Rate Limit) của Google Gemini API. Vui lòng đợi khoảng 15-30 giây và thử lại!");
+            }
+            if (hasExceptionCauseContaining(e, "503") || hasExceptionCauseContaining(e, "high demand") || hasExceptionCauseContaining(e, "temporary")) {
+                throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE,
+                        "Hệ thống máy chủ Google Gemini đang bị quá tải (lỗi 503 - High Demand). Vui lòng thử lại sau giây lát!");
+            }
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Không thể tạo lịch trình bằng AI lúc này. Chi tiết: " + e.getMessage());
+        }
+    }
+    private boolean hasExceptionCauseContaining(Throwable e, String term) {
+        Throwable current = e;
+        while (current != null) {
+            if (current.getMessage() != null && current.getMessage().toLowerCase().contains(term.toLowerCase())) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
     }
     private String systemPrompt(){
         return """
