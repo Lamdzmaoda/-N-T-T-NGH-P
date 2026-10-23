@@ -16,7 +16,7 @@ import java.util.Set;
 @AllArgsConstructor
 @NoArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class UserRequest {
+public class  UserRequest {
     @Size(min = 3, message = "USER_INVALID")
     String username;
     String email;

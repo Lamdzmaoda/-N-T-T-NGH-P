@@ -1,10 +1,10 @@
 spring:
   application:
-    name: travel-ai-planner
+    name: personal_finance
 
   # ==================== DATABASE ====================
   datasource:
-    url: ${DBMS_CONNECTION:jdbc:mysql://localhost:3636/travel_ai_planner}
+    url: ${DBMS_CONNECTION:jdbc:mysql://localhost:3636/personal_finance}
     username: ${DBMS_USERNAME:root}
     password: ${DBMS_PASSWORD:lamdzbodoi}
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -56,13 +56,13 @@ spring:
 server:
   port: 8080
   servlet:
-    context-path: /travel-ai-planner
+    context-path: /api
 
 # ==================== JWT ====================
 jwt:
   signerKey: "nH89dXg8G9QRuCdU8whHzp2F5fclyBtWyzfxTSaqMbsW6bqf4GUd3sBfNWP3/EW9O1gPMqJGBhn+tSrPdvdH6A=="
-  access-token-expiration: 900000       # 15 phút (ms)
-  refresh-token-expiration: 604800000   # 7 ngày (ms)
+  access-token-expiration: 900       # 15 phút (ms)
+  refresh-token-expiration: 604800   # 7 ngày (ms)
 
 # ==================== CORS ====================
 cors:
@@ -70,9 +70,9 @@ cors:
 
 # ==================== EXTERNAL APIs ====================
 cloudinary:
-  cloud-name: ${CLOUDINARY_CLOUD_NAME:your-cloud-name}
-  api-key: ${CLOUDINARY_API_KEY:your-api-key}
-  api-secret: ${CLOUDINARY_API_SECRET:your-api-secret}
+
+
+
 
 # ==================== SPRINGDOC / SWAGGER ====================
 springdoc:

@@ -31,6 +31,8 @@ public enum ErrorCode {
     PLACE_NOT_FOUND(1010, "place not found", HttpStatus.NOT_FOUND),
     NOT_FOUND(1011, "not found", HttpStatus.NOT_FOUND),
     RATE_LIMIT_EXCEEDED(1012, "Bạn đã vượt quá giới hạn lượt gọi tạo lịch trình (tối đa 3 lần/phút). Vui lòng thử lại sau!", HttpStatus.TOO_MANY_REQUESTS),
+    WALLET_NAME_EXISTED(1013, "Wallet exists", HttpStatus.BAD_REQUEST),
+    WALLET_NOT_FOUND(1014,"wallet not exists", HttpStatus.NOT_FOUND)
     ;
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {

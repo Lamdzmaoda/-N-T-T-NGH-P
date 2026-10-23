@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Travel AI Planner — Interactive Prototype (B2B2C with Transport Booking)</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    @keyframes pulse-ring { 0% { transform: scale(0.95); opacity: 0.8; } 50% { transform: scale(1.05); opacity: 0.4; } 100% { transform: scale(0.95); opacity: 0.8; } }
+    .pulse-effect { animation: pulse-ring 2s infinite ease-in-out; }
+    @keyframes heart-burst { 0% { transform: scale(1); } 50% { transform: scale(1.3); } 100% { transform: scale(1); } }
+    .heart-burst { animation: heart-burst 0.3s ease-in-out; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex flex-col antialiased">
+
+  <!-- ==================== TOP NAVIGATION & ROLE SWITCHER ==================== -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-4">
+      
+      <!-- Logo & Project Identity -->
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center text-white text-xl font-bold shadow-md shadow-sky-500/20">
+          ✈️
+        </div>
+        <div>
+          <h1 class="text-lg font-bold text-slate-900 leading-tight">Travel AI Planner</h1>
+          <p class="text-xs text-slate-500 font-medium">B2B2C Ecosystem • Tích hợp Booking Xe & AI Lịch trình</p>
+        </div>
+      </div>
+
+      <!-- ROLE SWITCHER (Chuyển đổi góc nhìn 3 vai trò) -->
+      <div class="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
+        <button onclick="switchRole('TRAVELER')" id="btn-role-traveler" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 shadow-sm bg-white text-sky-700">
+          🎒 1. Du khách (Traveler)
+        </button>
+        <button onclick="switchRole('MERCHANT')" id="btn-role-merchant" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 text-slate-600 hover:text-slate-900">
+          🏪 2. Hộ kinh doanh & Nhà xe (Merchant)
+        </button>
+        <button onclick="switchRole('ADMIN')" id="btn-role-admin" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 text-slate-600 hover:text-slate-900">
+          🛡️ 3. Quản trị viên (Admin)
+        </button>
+      </div>
+
+      <!-- Identity & CCCD Badge -->
+      <div class="flex items-center gap-3">
+        <div class="hidden sm:flex flex-col text-right">
+          <span class="text-xs font-semibold text-slate-800" id="user-display-name">Nguyễn Văn An</span>
+          <span class="text-[11px] text-emerald-600 font-mono font-medium flex items-center justify-end gap-1">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
+            CCCD: 001202008989 (Đã xác minh)
+          </span>
+        </div>
+        <div class="w-9 h-9 rounded-full bg-slate-200 border border-slate-300 flex items-center justify-center font-bold text-slate-700 text-sm">
+          A
+        </div>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- ==================== BANNER ĐIỀU HƯỚNG MÔ PHỎNG ==================== -->
+  <div class="bg-indigo-900 text-indigo-100 px-4 py-2 text-xs flex items-center justify-between border-b border-indigo-800">
+    <div class="max-w-7xl mx-auto w-full flex items-center justify-between">
+      <span class="flex items-center gap-2">
+        <span class="px-2 py-0.5 rounded bg-indigo-700 text-white font-mono font-bold text-[10px]">PROTOTYPE V2</span>
+        <span>Đã bổ sung: <strong class="text-amber-300">Tính Phí Di Chuyển & Phân hệ Booking Xe</strong>. Vai trò hiện tại: <strong class="text-white underline" id="current-role-badge">Du khách</strong>.</span>
+      </span>
+      <span class="text-indigo-300 hidden md:inline">100% Mock Logic chạy độc lập</span>
+    </div>
+  </div>
+
+  <!-- ==================== MAIN CONTENT CONTAINER ==================== -->
+  <main class="max-w-7xl mx-auto px-4 py-6 flex-1 w-full">
+
+    <!-- ========================================================================= -->
+    <!-- 🎒 1. PHÂN HỆ DU KHÁCH (TRAVELER PORTAL) -->
+    <!-- ========================================================================= -->
+    <div id="view-traveler" class="space-y-6">
+
+      <!-- Navigation Tabs của Traveler -->
+      <div class="flex border-b border-slate-200 gap-6 text-sm font-semibold overflow-x-auto">
+        <button onclick="switchTravelerTab('ai-trip')" id="t-tab-ai" class="pb-3 border-b-2 border-sky-600 text-sky-600 flex items-center gap-2 shrink-0">
+          ✨ AI Lập Lịch Trình (Kèm Phí Xe)
+        </button>
+        <button onclick="switchTravelerTab('transport')" id="t-tab-transport" class="pb-3 border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center gap-2 shrink-0">
+          🚗 Booking Xe & Di Chuyển (<span class="text-amber-600 font-bold">Mới</span>)
+        </button>
+        <button onclick="switchTravelerTab('budget')" id="t-tab-budget" class="pb-3 border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center gap-2 shrink-0">
+          💰 Quản lý Ngân sách & Hóa đơn
+        </button>
+        <button onclick="switchTravelerTab('booking')" id="t-tab-booking" class="pb-3 border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center gap-2 shrink-0">
+          🛎️ Vé Dịch vụ & E-Voucher (<span id="my-booking-count">2</span>)
+        </button>
+        <button onclick="switchTravelerTab('social')" id="t-tab-social" class="pb-3 border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center gap-2 shrink-0">
+          🌐 Mạng xã hội Du lịch
+        </button>
+      </div>
+
+      <!-- TAB 1: AI TRIP PLANNER (CHỈ DÙNG DATA NỘI BỘ + TÍNH PHÍ XE) -->
+      <div id="content-ai-trip" class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Left: Form tham số đầu vào cho AI -->
+        <div class="lg:col-span-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+          <div class="border-b border-slate-100 pb-3">
+            <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+              <span class="text-sky-500">🤖</span> AI Lập Lịch Trình Toàn Diện
+            </h2>
+            <p class="text-xs text-slate-500 mt-1">Tự tính toán kết hợp cả Ăn uống, Lưu trú và Phương tiện di chuyển.</p>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Điểm xuất phát & Điểm đến</label>
+            <div class="grid grid-cols-2 gap-2">
+              <input type="text" id="ai-origin" value="Hồ Chí Minh" class="text-xs bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 font-medium" placeholder="Nơi đi">
+              <select id="ai-destination" class="text-xs bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 font-medium">
+                <option value="Đà Lạt">Đà Lạt, Lâm Đồng</option>
+                <option value="Sa Pa">Sa Pa, Lào Cai</option>
+                <option value="Phú Quốc">Phú Quốc, Kiên Giang</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Số ngày</label>
+              <input type="number" id="ai-days" value="3" min="1" max="7" class="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-sky-500 outline-none">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Số người</label>
+              <input type="number" id="ai-people" value="2" min="1" max="10" class="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-sky-500 outline-none">
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Phương tiện di chuyển mong muốn</label>
+            <select id="ai-transport-pref" class="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-medium">
+              <option value="LIMOUSINE_AND_BIKE">Xe Limousine khứ hồi + Thuê xe máy tại chỗ</option>
+              <option value="SELF_DRIVE_CAR">Thuê xe ô tô tự lái (4 chỗ)</option>
+              <option value="FLIGHT_AND_TAXI">Máy bay + Taxi đưa đón</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Tổng ngân sách tối đa (VNĐ)</label>
+            <div class="relative">
+              <input type="number" id="ai-budget" value="5000000" step="500000" class="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 pr-12 font-semibold text-slate-900">
+              <span class="absolute right-3 top-2.5 text-xs text-slate-400 font-bold">VNĐ</span>
+            </div>
+            <p class="text-[11px] text-slate-400 mt-1">Bao gồm cả vé xe, lưu trú, ăn uống & vé tham quan.</p>
+          </div>
+
+          <button onclick="generateAiTripWithTransport()" id="btn-generate-ai" class="w-full bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-700 hover:to-indigo-700 text-white font-semibold py-3 rounded-xl text-sm shadow-md shadow-sky-500/20 flex items-center justify-center gap-2 transition-all">
+            <span>✨ AI Phân Bổ Lịch Trình & Phí Xe</span>
+          </button>
+        </div>
+
+        <!-- Right: Kết quả Lịch trình do AI tạo (Có mục Xe) -->
+        <div class="lg:col-span-8 space-y-4">
+          <!-- Summary Header -->
+          <div class="bg-gradient-to-r from-slate-900 to-indigo-950 text-white p-5 rounded-2xl shadow-sm flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <span class="px-2.5 py-0.5 rounded bg-sky-500/20 text-sky-300 text-xs font-semibold border border-sky-400/30">Lịch trình AI tối ưu đa phương thức</span>
+              <h3 class="text-lg font-bold mt-1 text-white" id="trip-title-display">Đà Lạt 3N2Đ: Trọn gói Lưu trú + Xe Limousine + Xe máy</h3>
+              <p class="text-xs text-slate-300">Khởi hành: 15/10/2026 • 2 Khách du lịch • Từ: TP. Hồ Chí Minh</p>
+            </div>
+            <div class="text-right">
+              <span class="text-xs text-slate-400">Tổng chi phí dự toán:</span>
+              <p class="text-xl font-extrabold text-emerald-400" id="trip-cost-display">4.650.000 VNĐ</p>
+              <span class="text-[11px] text-slate-400">Ngân sách gốc: <span id="trip-budget-display">5.000.000 VNĐ</span> (Dư 350.000 đ ✅)</span>
+            </div>
+          </div>
+
+          <!-- MỤC ĐẶC BIỆT: CHẶNG DI CHUYỂN & PHƯƠNG TIỆN (TRANSPORT BLOCK) -->
+          <div class="bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-300/80 rounded-2xl p-4 shadow-sm space-y-3">
+            <div class="flex items-center justify-between border-b border-amber-200/70 pb-2">
+              <h4 class="font-bold text-amber-950 text-sm flex items-center gap-2">
+                <span class="p-1 bg-amber-500 text-white rounded-lg text-xs">🚗</span>
+                Phương tiện di chuyển chuyến đi (Dự toán: 1.650.000 VNĐ)
+              </h4>
+              <span class="text-xs font-bold text-amber-700">Đã tích hợp vào ngân sách</span>
+            </div>
+
+            <!-- Chặng 1: Limousine -->
+            <div class="bg-white p-3 rounded-xl border border-amber-200 flex items-center justify-between gap-3">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center text-xl shrink-0">🚐</div>
+                <div>
+                  <div class="flex items-center gap-2">
+                    <h5 class="text-xs font-bold text-slate-900">Xe Limousine VIP Phòng Nằm (Nhà xe An Phát)</h5>
+                    <span class="px-2 py-0.5 bg-amber-500 text-white text-[9px] font-bold rounded">Đối tác uy tín</span>
+                  </div>
+                  <p class="text-[11px] text-slate-500 mt-0.5">Sài Gòn ➔ Đà Lạt (Khứ hồi 2 chiều) • 2 vé khứ hồi</p>
+                </div>
+              </div>
+              <div class="text-right shrink-0">
+                <span class="text-xs font-bold text-slate-900 block">1.200.000 đ</span>
+                <button onclick="openTransportModal('Xe Limousine VIP Phòng Nằm', 'Nhà xe An Phát', 600000, 2)" class="mt-1 px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold rounded-lg shadow-sm">
+                  Booking Vé Xe
+                </button>
+              </div>
+            </div>
+
+            <!-- Chặng 2: Xe máy tại chỗ -->
+            <div class="bg-white p-3 rounded-xl border border-amber-200 flex items-center justify-between gap-3">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center text-xl shrink-0">🛵</div>
+                <div>
+                  <h5 class="text-xs font-bold text-slate-900">Thuê Xe Máy Tay Ga Honda AirBlade (Dịch vụ Hồng Mai)</h5>
+                  <p class="text-[11px] text-slate-500 mt-0.5">Giao xe tận Homestay Mây Hồng • Thuê 3 ngày (150k/ngày)</p>
+                </div>
+              </div>
+              <div class="text-right shrink-0">
+                <span class="text-xs font-bold text-slate-900 block">450.000 đ</span>
+                <button onclick="openTransportModal('Thuê xe máy Honda AirBlade', 'Cửa hàng Hồng Mai', 150000, 3)" class="mt-1 px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold rounded-lg shadow-sm">
+                  Booking Thuê Xe
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Timeline Ngày 1 -->
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+              <h4 class="font-bold text-slate-900 text-sm flex items-center gap-2">
+                <span class="w-6 h-6 rounded-full bg-sky-600 text-white text-xs flex items-center justify-center font-bold">1</span>
+                Ngày 1: Nhận phòng Homestay & Ẩm thực đêm Đà Lạt
+              </h4>
+              <span class="text-xs font-semibold text-slate-500">Ước tính: 1.100.000 VNĐ</span>
+            </div>
+
+            <div class="flex items-start justify-between p-3.5 rounded-xl bg-amber-50/60 border border-amber-200/80 gap-3">
+              <div class="flex items-start gap-3">
+                <div class="w-12 h-12 rounded-lg bg-amber-100 flex items-center justify-center text-xl shrink-0">🏡</div>
+                <div>
+                  <div class="flex items-center gap-2">
+                    <h5 class="text-sm font-bold text-slate-900">Homestay Mây Hồng Đà Lạt</h5>
+                    <span class="px-2 py-0.5 bg-amber-500 text-white text-[10px] font-bold rounded-md uppercase tracking-wider">Được tài trợ (Ads)</span>
+                  </div>
+                  <p class="text-xs text-slate-600 mt-0.5">08:00 • Check-in phòng Deluxe đồi thông</p>
+                  <p class="text-[11px] text-slate-500">Hộ kinh doanh: Chị Hồng Mai • Còn 3 slot hôm nay</p>
+                </div>
+              </div>
+              <div class="text-right shrink-0">
+                <span class="text-xs font-bold text-slate-900 block">750.000 VNĐ</span>
+                <button onclick="alert('Đã mở modal đặt phòng!')" class="mt-1 px-3 py-1 bg-sky-600 hover:bg-sky-700 text-white text-xs font-semibold rounded-lg shadow-sm">
+                  Tự đặt phòng
+                </button>
+              </div>
+            </div>
+
+            <div class="flex items-start justify-between p-3.5 rounded-xl bg-slate-50 border border-slate-200 gap-3">
+              <div class="flex items-start gap-3">
+                <div class="w-12 h-12 rounded-lg bg-slate-200 flex items-center justify-center text-xl shrink-0">🍲</div>
+                <div>
+                  <h5 class="text-sm font-bold text-slate-900">Lẩu Gà Lá É Tao Ngộ (Cơ sở 1)</h5>
+                  <p class="text-xs text-slate-600 mt-0.5">18:30 • Ăn tối đặc sản Đà Lạt</p>
+                  <p class="text-[11px] text-slate-500">Hộ kinh doanh: Chú Ba Cường • Bàn ăn gia đình</p>
+                </div>
+              </div>
+              <div class="text-right shrink-0">
+                <span class="text-xs font-bold text-slate-900 block">350.000 VNĐ</span>
+                <button onclick="alert('Đã mở modal đặt bàn!')" class="mt-1 px-3 py-1 bg-slate-700 hover:bg-slate-800 text-white text-xs font-semibold rounded-lg">
+                  Tự đặt bàn
+                </button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- TAB 2 (MỚI): PHÂN HỆ BOOKING XE & DI CHUYỂN RIÊNG BIỆT -->
+      <div id="content-transport" class="hidden space-y-6">
+        <div class="bg-gradient-to-r from-amber-500 to-orange-600 text-white p-6 rounded-2xl shadow-sm flex justify-between items-center flex-wrap gap-4">
+          <div>
+            <span class="px-2 py-0.5 bg-white/20 text-white rounded text-xs font-bold uppercase">Transport Booking Engine</span>
+            <h3 class="text-xl font-bold mt-1">Trung Tâm Đặt Vé Xe & Thuê Xe Du Lịch</h3>
+            <p class="text-xs text-amber-100">Kết nối trực tiếp các hộ kinh doanh vận tải, nhà xe limousine và cho thuê xe máy/ô tô tự lái</p>
+          </div>
+          <div class="text-right">
+            <span class="text-xs text-amber-100">Chính sách nền tảng:</span>
+            <p class="text-sm font-bold">Giữ chỗ tức thì • Vé QR Code • Cam kết không hủy chuyến</p>
+          </div>
+        </div>
+
+        <!-- Bộ lọc chọn loại xe -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          
+          <!-- Box 1: Vé Xe Khách / Limousine -->
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+            <div class="flex items-center gap-2 border-b border-slate-100 pb-3">
+              <span class="text-xl">🚐</span>
+              <div>
+                <h4 class="font-bold text-slate-900 text-sm">Đặt Vé Xe Limousine Đưa Đón</h4>
+                <p class="text-xs text-slate-500">Tuyến Sài Gòn / Hà Nội ⬄ Các điểm du lịch</p>
+              </div>
+            </div>
+
+            <div class="space-y-3">
+              <div class="p-3.5 rounded-xl border border-slate-200 hover:border-amber-400 transition bg-slate-50 flex justify-between items-center">
+                <div>
+                  <h5 class="text-xs font-bold text-slate-900">Limousine An Phát VIP (Phòng đôi đồi thông)</h5>
+                  <p class="text-[11px] text-slate-500">TP.HCM ➔ Đà Lạt • Giờ chạy: 23:00 hàng ngày</p>
+                  <span class="text-[10px] text-emerald-600 font-bold">Còn 6 chỗ trống hôm nay</span>
+                </div>
+                <div class="text-right shrink-0">
+                  <p class="text-xs font-bold text-amber-600">300.000 đ / vé</p>
+                  <button onclick="openTransportModal('Limousine An Phát VIP', 'Nhà xe An Phát', 300000, 2)" class="mt-1 px-3 py-1 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-lg shadow-sm">
+                    Đặt vé ngay
+                  </button>
+                </div>
+              </div>
+
+              <div class="p-3.5 rounded-xl border border-slate-200 hover:border-amber-400 transition bg-slate-50 flex justify-between items-center">
+                <div>
+                  <h5 class="text-xs font-bold text-slate-900">Xe Giường Nằm Cao Cấp Thành Bưởi Hợp Tác</h5>
+                  <p class="text-[11px] text-slate-500">Bến xe Miền Đông ➔ Bến xe liên tỉnh Đà Lạt</p>
+                  <span class="text-[10px] text-emerald-600 font-bold">Còn 12 chỗ trống</span>
+                </div>
+                <div class="text-right shrink-0">
+                  <p class="text-xs font-bold text-amber-600">240.000 đ / vé</p>
+                  <button onclick="openTransportModal('Xe Giường Nằm Thành Bưởi', 'HTX Vận tải Đà Lạt', 240000, 2)" class="mt-1 px-3 py-1 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-lg shadow-sm">
+                    Đặt vé ngay
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Box 2: Thuê Xe Máy / Ô Tô Tự Lái -->
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+            <div class="flex items-center gap-2 border-b border-slate-100 pb-3">
+              <span class="text-xl">🛵</span>
+              <div>
+                <h4 class="font-bold text-slate-900 text-sm">Thuê Xe Máy & Ô Tô Tự Lái</h4>
+                <p class="text-xs text-slate-500">Giao xe tận nơi tại Sân bay hoặc Khách sạn</p>
+              </div>
+            </div>
+
+            <div class="space-y-3">
+              <div class="p-3.5 rounded-xl border border-slate-200 hover:border-amber-400 transition bg-slate-50 flex justify-between items-center">
+                <div>
+                  <h5 class="text-xs font-bold text-slate-900">Xe Máy Tay Ga Honda AirBlade 125cc</h5>
+                  <p class="text-[11px] text-slate-500">Cửa hàng Hồng Mai • Kèm 2 mũ bảo hiểm + 1 áo mưa</p>
+                  <span class="text-[10px] text-emerald-600 font-bold">Còn 5 xe sẵn sàng</span>
+                </div>
+                <div class="text-right shrink-0">
+                  <p class="text-xs font-bold text-amber-600">150.000 đ / ngày</p>
+                  <button onclick="openTransportModal('Thuê xe AirBlade 125cc', 'Cửa hàng Hồng Mai', 150000, 3)" class="mt-1 px-3 py-1 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-lg shadow-sm">
+                    Thuê xe ngay
+                  </button>
+                </div>
+              </div>
+
+              <div class="p-3.5 rounded-xl border border-slate-200 hover:border-amber-400 transition bg-slate-50 flex justify-between items-center">
+                <div>
+                  <h5 class="text-xs font-bold text-slate-900">Ô Tô 4 Chỗ Hyundai Accent Tự Lái</h5>
+                  <p class="text-[11px] text-slate-500">Hộ kinh doanh Minh Đức • Đời 2024, số tự động</p>
+                  <span class="text-[10px] text-emerald-600 font-bold">Còn 2 xe trống</span>
+                </div>
+                <div class="text-right shrink-0">
+                  <p class="text-xs font-bold text-amber-600">800.000 đ / ngày</p>
+                  <button onclick="openTransportModal('Thuê Ô tô Accent 4 chỗ', 'Hộ KD Minh Đức', 800000, 3)" class="mt-1 px-3 py-1 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-lg shadow-sm">
+                    Thuê xe ngay
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- TAB 3: QUẢN LÝ NGÂN SÁCH (BUDGET TRACKER) -->
+      <div id="content-budget" class="hidden space-y-6">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+            <span class="text-xs font-semibold text-slate-500 uppercase">Hạn mức Ngân sách</span>
+            <p class="text-2xl font-black text-slate-900 mt-1">5.000.000 đ</p>
+            <p class="text-xs text-slate-400">Trọn gói chuyến đi</p>
+          </div>
+          <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+            <span class="text-xs font-semibold text-slate-500 uppercase">Thực tế đã chi</span>
+            <p class="text-2xl font-black text-sky-600 mt-1" id="actual-expense-display">4.000.000 đ</p>
+            <p class="text-xs text-slate-500 mt-1" id="expense-percentage-text">Đã tiêu 80% ngân sách</p>
+          </div>
+          <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+            <span class="text-xs font-semibold text-slate-500 uppercase">Phí Di chuyển (Vé/Xe)</span>
+            <p class="text-2xl font-black text-amber-500 mt-1">1.650.000 đ</p>
+            <p class="text-xs text-amber-700 font-medium">Chiếm 33% ngân sách</p>
+          </div>
+          <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+            <span class="text-xs font-semibold text-slate-500 uppercase">Ngân sách còn lại</span>
+            <p class="text-2xl font-black text-emerald-600 mt-1" id="remaining-budget-display">1.000.000 đ</p>
+            <p class="text-xs text-emerald-600 font-semibold">An toàn ✅</p>
+          </div>
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-2">
+          <div class="flex justify-between text-xs font-bold">
+            <span class="text-slate-700">Tỷ lệ sử dụng ngân sách (Bao gồm chi phí xe cộ)</span>
+            <span id="budget-progress-percent" class="text-sky-600 font-mono">80.0%</span>
+          </div>
+          <div class="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
+            <div id="budget-progress-bar" class="bg-sky-500 h-3 rounded-full transition-all duration-500" style="width: 80%;"></div>
+          </div>
+        </div>
+
+        <!-- Bảng lịch sử chi tiêu -->
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+          <h4 class="font-bold text-slate-900 text-sm mb-3">Bảng phân bổ chi phí chi tiết theo danh mục</h4>
+          <div class="overflow-x-auto">
+            <table class="w-full text-xs text-left">
+              <thead class="text-slate-400 border-b border-slate-100 uppercase font-mono text-[11px]">
+                <tr>
+                  <th class="py-2">Khoản chi</th>
+                  <th class="py-2">Danh mục</th>
+                  <th class="py-2 text-right">Số tiền</th>
+                  <th class="py-2 text-center">Trạng thái</th>
+                </tr>
+              </thead>
+              <tbody id="expense-list-table" class="divide-y divide-slate-100 font-medium">
+                <tr class="bg-amber-50/50">
+                  <td class="py-2.5 text-slate-900 font-bold">Vé xe Limousine An Phát (Khứ hồi 2 người)</td>
+                  <td class="py-2.5 text-amber-700 font-bold">🚗 Di chuyển</td>
+                  <td class="py-2.5 text-right font-bold text-slate-900">1.200.000 đ</td>
+                  <td class="py-2.5 text-center text-emerald-600 font-semibold">Đã cọc vé qua web</td>
+                </tr>
+                <tr class="bg-amber-50/50">
+                  <td class="py-2.5 text-slate-900 font-bold">Thuê xe máy tay ga AirBlade (3 ngày)</td>
+                  <td class="py-2.5 text-amber-700 font-bold">🚗 Di chuyển</td>
+                  <td class="py-2.5 text-right font-bold text-slate-900">450.000 đ</td>
+                  <td class="py-2.5 text-center text-emerald-600 font-semibold">Đã cọc giữ xe</td>
+                </tr>
+                <tr>
+                  <td class="py-2.5 text-slate-800 font-semibold">Cọc Homestay Mây Hồng (2 đêm)</td>
+                  <td class="py-2.5 text-slate-500">Lưu trú</td>
+                  <td class="py-2.5 text-right font-bold text-slate-900">1.500.000 đ</td>
+                  <td class="py-2.5 text-center text-emerald-600">Đã thanh toán</td>
+                </tr>
+                <tr>
+                  <td class="py-2.5 text-slate-800 font-semibold">Ăn lẩu gà lá é Tao Ngộ</td>
+                  <td class="py-2.5 text-slate-500">Ăn uống</td>
+                  <td class="py-2.5 text-right font-bold text-slate-900">450.000 đ</td>
+                  <td class="py-2.5 text-center text-emerald-600">Đã lưu hóa đơn</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 4: TỰ BOOKING & VÉ ĐIỆN TỬ E-VOUCHER (KÈM VÉ XE QR) -->
+      <div id="content-booking" class="hidden space-y-4">
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+          <h3 class="text-base font-bold text-slate-900">Vé Dịch Vụ & Vé Xe Điện Tử Của Bạn</h3>
+          <p class="text-xs text-slate-500 mt-1">Xuất trình mã QR này cho Tài xế xe hoặc Lễ tân Homestay để quét xác nhận check-in.</p>
+        </div>
+
+        <div id="booking-cards-container" class="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <!-- Card Vé Xe Limousine (QR Code) -->
+          <div class="bg-white border-2 border-dashed border-amber-400 rounded-2xl p-5 shadow-sm relative overflow-hidden flex flex-col justify-between">
+            <div class="flex justify-between items-start border-b border-slate-100 pb-3">
+              <div>
+                <span class="px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-bold text-[10px]">VÉ XE ĐIỆN TỬ (E-TICKET)</span>
+                <h4 class="text-base font-bold text-slate-900 mt-1">Xe Limousine An Phát VIP</h4>
+                <p class="text-xs text-slate-500">Khứ hồi Sài Gòn ⬄ Đà Lạt • 2 Ghế VIP</p>
+              </div>
+              <div class="text-right">
+                <span class="text-xs text-slate-400">Mã vé xe:</span>
+                <p class="text-sm font-mono font-bold text-amber-700">TR-8921</p>
+              </div>
+            </div>
+
+            <div class="py-4 flex items-center justify-center gap-6">
+              <div class="w-28 h-28 bg-slate-900 p-2 rounded-xl flex items-center justify-center text-white text-xs font-mono text-center shadow-md">
+                [ QR VÉ XE ]<br>TR-8921-BUS
+              </div>
+              <div class="text-xs space-y-1 text-slate-600">
+                <p><strong>Khởi hành:</strong> 23:00 • 14/10/2026</p>
+                <p><strong>Điểm đón:</strong> Bến xe Miền Đông mới</p>
+                <p><strong>Tổng tiền:</strong> 1.200.000 VNĐ</p>
+                <p class="text-emerald-600 font-medium">Chưa soát vé</p>
+              </div>
+            </div>
+
+            <div class="bg-amber-50 p-2.5 rounded-xl text-[11px] text-amber-800 text-center border border-amber-200">
+              Tài xế nhà xe sẽ quét mã QR này khi bạn lên xe để xác nhận hoàn tất lượt đi.
+            </div>
+          </div>
+
+          <!-- Card Vé Homestay (QR Code) -->
+          <div class="bg-white border-2 border-dashed border-sky-300 rounded-2xl p-5 shadow-sm relative overflow-hidden flex flex-col justify-between">
+            <div class="flex justify-between items-start border-b border-slate-100 pb-3">
+              <div>
+                <span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 font-bold text-[10px]">VÉ LƯU TRÚ (HOMESTAY)</span>
+                <h4 class="text-base font-bold text-slate-900 mt-1">Homestay Mây Hồng Đà Lạt</h4>
+                <p class="text-xs text-slate-500">Phòng Deluxe Đồi Thông • 2 Khách</p>
+              </div>
+              <div class="text-right">
+                <span class="text-xs text-slate-400">Mã đơn:</span>
+                <p class="text-sm font-mono font-bold text-sky-700">BK-9821</p>
+              </div>
+            </div>
+
+            <div class="py-4 flex items-center justify-center gap-6">
+              <div class="w-28 h-28 bg-slate-900 p-2 rounded-xl flex items-center justify-center text-white text-xs font-mono text-center shadow-md">
+                [ QR PHÒNG ]<br>BK-9821-OK
+              </div>
+              <div class="text-xs space-y-1 text-slate-600">
+                <p><strong>Check-in:</strong> 15/10/2026</p>
+                <p><strong>Tổng tiền:</strong> 1.500.000 VNĐ</p>
+                <p class="text-emerald-600 font-medium">Chưa check-in</p>
+              </div>
+            </div>
+
+            <div class="bg-slate-50 p-2.5 rounded-xl text-[11px] text-slate-500 text-center border border-slate-100">
+              Lễ tân Homestay sẽ quét mã này để hoàn tất thủ tục nhận phòng.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 5: MẠNG XÃ HỘI DU LỊCH (COMMUNITY FEED) -->
+      <div id="content-social" class="hidden space-y-6">
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm max-w-2xl mx-auto space-y-4">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-full bg-indigo-100 font-bold text-indigo-700 flex items-center justify-center">M</div>
+              <div>
+                <h5 class="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                  Minh Anh Nguyễn <span class="text-sky-500 text-xs" title="Đã định danh CCCD">✓</span>
+                </h5>
+                <p class="text-xs text-slate-400">2 giờ trước • Đà Lạt, Lâm Đồng</p>
+              </div>
+            </div>
+          </div>
+
+          <p class="text-sm text-slate-700 leading-relaxed">
+            Đi Đà Lạt tự booking xe Limousine An Phát và thuê xe máy qua app tiện thực sự! Xuống bến xe là có xe máy giao tận tay, vi vu đồi chè Cầu Đất săn mây cực đã. Mọi người sao chép lịch trình này đi thử nha! 🚗🌲
+          </p>
+
+          <div class="p-3.5 bg-gradient-to-r from-sky-50 to-indigo-50 border border-sky-200 rounded-xl flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-lg bg-sky-500 text-white flex items-center justify-center text-lg shadow-sm">🗺️</div>
+              <div>
+                <h6 class="text-xs font-bold text-slate-900">Lịch trình: Đà Lạt 3N2Đ Bao gồm Xe & Homestay</h6>
+                <p class="text-[11px] text-slate-500">Phí xe + Khách sạn + Ăn uống: ~4.650.000 đ</p>
+              </div>
+            </div>
+            <button onclick="alert('Đã sao chép lịch trình thành công!')" class="px-3 py-1.5 bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs rounded-lg shadow-sm shrink-0">
+              📋 Sao chép Lịch trình
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- 🏪 2. PHÂN HỆ HỘ KINH DOANH & NHÀ XE (MERCHANT PORTAL) -->
+    <!-- ========================================================================= -->
+    <div id="view-merchant" class="hidden space-y-6">
+      <div class="bg-gradient-to-r from-emerald-800 to-teal-900 text-white p-6 rounded-2xl shadow-sm flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <span class="px-2.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-xs font-semibold border border-emerald-400/30">Hộ kinh doanh & Nhà xe Vận tải</span>
+          <h2 class="text-xl font-bold mt-1 text-white">Nhà Xe Limousine An Phát & Homestay Mây Hồng</h2>
+          <p class="text-xs text-emerald-200">Mã số thuế: 0318928192 • Chủ hộ: Anh Trọng Phát • CCCD: 001202008989</p>
+        </div>
+        <div class="flex gap-2">
+          <button onclick="alert('Mở form Thêm cơ sở / Tuyến xe vận tải mới!')" class="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs rounded-xl shadow-md transition">
+            + Thêm Dịch vụ Xe / Phòng mới
+          </button>
+        </div>
+      </div>
+
+      <!-- Thống kê Nhà xe & Hộ KD -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-white p-4 rounded-xl border border-slate-200">
+          <span class="text-xs text-slate-500 font-semibold">Vé xe & Phòng đã đặt</span>
+          <p class="text-2xl font-black text-slate-900 mt-1">26 lượt</p>
+          <span class="text-[11px] text-emerald-600 font-medium">↑ 12 vé xe tuần này</span>
+        </div>
+        <div class="bg-white p-4 rounded-xl border border-slate-200">
+          <span class="text-xs text-slate-500 font-semibold">Khách đã phục vụ qua web</span>
+          <p class="text-2xl font-black text-sky-600 mt-1" id="merchant-serviced-guests">52 khách</p>
+          <span class="text-[11px] text-slate-400">Đã quét QR soát vé & check-in</span>
+        </div>
+        <div class="bg-white p-4 rounded-xl border border-slate-200">
+          <span class="text-xs text-slate-500 font-semibold">Tổng doanh thu vé & phòng</span>
+          <p class="text-2xl font-black text-emerald-600 mt-1">24.600.000 đ</p>
+          <span class="text-[11px] text-slate-500">Chưa trừ hoa hồng web</span>
+        </div>
+        <div class="bg-white p-4 rounded-xl border border-slate-200">
+          <span class="text-xs text-slate-500 font-semibold">Hoa hồng nền tảng (8%)</span>
+          <p class="text-2xl font-black text-rose-500 mt-1" id="merchant-commission-fee">-1.968.000 đ</p>
+          <span class="text-[11px] text-slate-400">Trích theo số lượt người đi</span>
+        </div>
+      </div>
+
+      <!-- Quét QR Soát Vé Xe & Khách Phòng -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div class="lg:col-span-6 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+          <h3 class="font-bold text-slate-900 text-sm flex items-center gap-2">
+            <span class="text-amber-500">📷</span> Soát Vé Xe Điện Tử QR Code (Nhà Xe)
+          </h3>
+          <p class="text-xs text-slate-500">Tài xế hoặc phụ xe quét mã vé xe E-Ticket của khách trước khi khởi hành:</p>
+          
+          <div class="flex gap-2">
+            <input type="text" id="checkin-transport-code" value="TR-8921" class="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 outline-none uppercase font-mono font-bold">
+            <button onclick="simulateTransportCheckIn()" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shrink-0 transition">
+              Soát Vé Lên Xe
+            </button>
+          </div>
+          <p class="text-[11px] text-slate-400 italic">*Soát vé thành công sẽ ghi nhận 2 khách đã sử dụng dịch vụ xe thông qua web.</p>
+        </div>
+
+        <div class="lg:col-span-6 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+          <h3 class="font-bold text-slate-900 text-sm flex items-center gap-2">
+            <span class="text-emerald-500">🏨</span> Check-in Khách Nhận Phòng (Homestay)
+          </h3>
+          <p class="text-xs text-slate-500">Lễ tân quét mã voucher nhận phòng của du khách:</p>
+          <div class="flex gap-2">
+            <input type="text" id="checkin-room-code" value="BK-9821" class="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 outline-none uppercase font-mono font-bold">
+            <button onclick="simulateRoomCheckIn()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shrink-0 transition">
+              Xác Nhận Nhận Phòng
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- 🛡️ 3. PHÂN HỆ QUẢN TRỊ VIÊN (ADMIN PORTAL) -->
+    <!-- ========================================================================= -->
+    <div id="view-admin" class="hidden space-y-6">
+      <div class="bg-slate-900 text-white p-6 rounded-2xl shadow-sm flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <span class="px-2.5 py-0.5 rounded bg-rose-500/20 text-rose-300 text-xs font-semibold border border-rose-400/30">Admin Dashboard</span>
+          <h2 class="text-xl font-bold mt-1 text-white">Giám Sát Doanh Thu Sàn & Lượt Khách Dùng Dịch Vụ</h2>
+          <p class="text-xs text-slate-400">Doanh thu web tính trực tiếp theo số lượng khách đã hoàn tất dịch vụ đặt xe và lưu trú</p>
+        </div>
+        <div class="text-right">
+          <span class="text-xs text-slate-400">Tỷ lệ hoa hồng:</span>
+          <p class="text-lg font-mono font-bold text-amber-400">8.0% / Giá trị đơn</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+          <span class="text-xs font-semibold text-slate-500 uppercase">Tổng Lượt Khách Sử Dụng Qua Web</span>
+          <p class="text-3xl font-black text-sky-600 mt-2" id="admin-total-users-served">1.432 người</p>
+          <p class="text-xs text-emerald-600 font-medium mt-1">Bao gồm 814 khách đi xe & 618 khách lưu trú</p>
+        </div>
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+          <span class="text-xs font-semibold text-slate-500 uppercase">Tổng Hoa Hồng Nền Tảng Đã Thu</span>
+          <p class="text-3xl font-black text-emerald-600 mt-2" id="admin-total-commission">46.780.000 VNĐ</p>
+          <p class="text-xs text-slate-400 mt-1">Trích thu tự động khi quét QR</p>
+        </div>
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+          <span class="text-xs font-semibold text-slate-500 uppercase">Đối Tác Hoạt Động</span>
+          <p class="text-3xl font-black text-amber-500 mt-2">48 cơ sở</p>
+          <p class="text-xs text-slate-400 mt-1">12 nhà xe & 36 điểm lưu trú/ẩm thực</p>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ==================== MODAL BOOKING XE (TRANSPORT BOOKING MODAL) ==================== -->
+  <div id="modal-transport" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-5 space-y-4 shadow-2xl border border-slate-200">
+      <div class="flex justify-between items-start border-b border-slate-100 pb-2">
+        <div>
+          <span class="text-[10px] font-bold px-2 py-0.5 bg-amber-100 text-amber-800 rounded uppercase">Booking Xe & Di Chuyển</span>
+          <h3 class="text-base font-bold text-slate-900 mt-1" id="modal-trans-title">Xe Limousine VIP Phòng Nằm</h3>
+          <p class="text-xs text-slate-500" id="modal-trans-vendor">Nhà xe An Phát</p>
+        </div>
+        <button onclick="closeTransportModal()" class="text-slate-400 hover:text-slate-600 font-bold text-lg">✕</button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Ngày & Giờ đón / Nhận xe</label>
+          <input type="datetime-local" value="2026-10-14T23:00" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 outline-none font-semibold">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Số lượng (Ghế/Xe/Ngày)</label>
+            <input type="number" id="modal-trans-quantity" value="2" min="1" max="10" onchange="calcTransTotal()" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 outline-none font-semibold">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Điểm đón / Trả</label>
+            <input type="text" value="Bến xe Miền Đông mới" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-700 font-semibold">
+          </div>
+        </div>
+
+        <div class="p-3 bg-amber-50/70 rounded-xl space-y-1.5 border border-amber-200">
+          <div class="flex justify-between text-slate-600">
+            <span>Đơn giá niêm yết:</span>
+            <span id="modal-trans-unit-price">600.000 đ</span>
+          </div>
+          <div class="flex justify-between font-bold text-slate-900 text-sm pt-1 border-t border-amber-200">
+            <span>Tổng cước phí di chuyển:</span>
+            <span class="text-amber-600" id="modal-trans-total-price">1.200.000 đ</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex gap-2">
+        <button onclick="closeTransportModal()" class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl transition">
+          Hủy bỏ
+        </button>
+        <button onclick="confirmTransportBooking()" class="flex-1 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-md transition">
+          Xác Nhận Giữ Chỗ Xe
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- JAVASCRIPT STATE ENGINE -->
+  <script>
+    let currentRole = 'TRAVELER';
+    let transUnitPrice = 600000;
+
+    function switchRole(role) {
+      currentRole = role;
+      document.getElementById('view-traveler').classList.add('hidden');
+      document.getElementById('view-merchant').classList.add('hidden');
+      document.getElementById('view-admin').classList.add('hidden');
+
+      const btnT = document.getElementById('btn-role-traveler');
+      const btnM = document.getElementById('btn-role-merchant');
+      const btnA = document.getElementById('btn-role-admin');
+      [btnT, btnM, btnA].forEach(b => b.className = 'px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900');
+
+      if (role === 'TRAVELER') {
+        document.getElementById('view-traveler').classList.remove('hidden');
+        btnT.className = 'px-3.5 py-1.5 rounded-lg text-xs font-semibold shadow-sm bg-white text-sky-700';
+        document.getElementById('current-role-badge').innerText = 'Du khách (Traveler)';
+        document.getElementById('user-display-name').innerText = 'Nguyễn Văn An (Du khách)';
+      } else if (role === 'MERCHANT') {
+        document.getElementById('view-merchant').classList.remove('hidden');
+        btnM.className = 'px-3.5 py-1.5 rounded-lg text-xs font-semibold shadow-sm bg-white text-emerald-700';
+        document.getElementById('current-role-badge').innerText = 'Hộ kinh doanh & Nhà xe (Merchant)';
+        document.getElementById('user-display-name').innerText = 'Trọng Phát (Chủ nhà xe)';
+      } else if (role === 'ADMIN') {
+        document.getElementById('view-admin').classList.remove('hidden');
+        btnA.className = 'px-3.5 py-1.5 rounded-lg text-xs font-semibold shadow-sm bg-white text-rose-700';
+        document.getElementById('current-role-badge').innerText = 'Quản trị viên (Admin)';
+        document.getElementById('user-display-name').innerText = 'Admin Nền Tảng';
+      }
+    }
+
+    function switchTravelerTab(tab) {
+      ['ai-trip', 'transport', 'budget', 'booking', 'social'].forEach(t => {
+        const el = document.getElementById('content-' + t);
+        if (el) el.classList.add('hidden');
+      });
+      ['ai', 'transport', 'budget', 'booking', 'social'].forEach(t => {
+        const btn = document.getElementById('t-tab-' + t);
+        if (btn) btn.className = 'pb-3 border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center gap-2 shrink-0';
+      });
+
+      const activeContent = document.getElementById('content-' + tab);
+      if (activeContent) activeContent.classList.remove('hidden');
+      
+      const activeBtn = document.getElementById('t-tab-' + (tab === 'ai-trip' ? 'ai' : tab));
+      if (activeBtn) activeBtn.className = 'pb-3 border-b-2 border-sky-600 text-sky-600 flex items-center gap-2 shrink-0 font-bold';
+    }
+
+    function openTransportModal(title, vendor, price, qty) {
+      transUnitPrice = price;
+      document.getElementById('modal-trans-title').innerText = title;
+      document.getElementById('modal-trans-vendor').innerText = vendor;
+      document.getElementById('modal-trans-unit-price').innerText = price.toLocaleString('vi-VN') + ' đ';
+      document.getElementById('modal-trans-quantity').value = qty;
+      calcTransTotal();
+      document.getElementById('modal-transport').classList.remove('hidden');
+    }
+
+    function closeTransportModal() {
+      document.getElementById('modal-transport').classList.add('hidden');
+    }
+
+    function calcTransTotal() {
+      const q = parseInt(document.getElementById('modal-trans-quantity').value) || 1;
+      const total = transUnitPrice * q;
+      document.getElementById('modal-trans-total-price').innerText = total.toLocaleString('vi-VN') + ' đ';
+    }
+
+    function confirmTransportBooking() {
+      closeTransportModal();
+      alert('🚗 Đặt vé xe thành công!\n- Mã vé: TR-8921\n- Mã QR Vé xe đã được tạo và lưu vào tab "Vé Dịch vụ & E-Voucher"!\n- Chi phí di chuyển đã được tự động ghi nhận vào Quản lý Ngân sách!');
+      switchTravelerTab('booking');
+    }
+
+    function simulateTransportCheckIn() {
+      const code = document.getElementById('checkin-transport-code').value;
+      alert(`✅ Soát vé xe [${code}] thành công!\n- Khách: Nguyễn Văn An (2 người)\n- Tuyến: Sài Gòn ➔ Đà Lạt (Xe Limousine VIP)\n- Hệ thống tự động ghi nhận hoa hồng nền tảng: 8% x 1.200.000đ = 96.000 VNĐ tính theo số lượng 2 khách đã sử dụng dịch vụ qua web!`);
+    }
+
+    function simulateRoomCheckIn() {
+      const code = document.getElementById('checkin-room-code').value;
+      alert(`🏨 Nhận phòng [${code}] thành công!\n- Khách: Nguyễn Văn An (2 người)\n- Phòng: Deluxe Đồi Thông (Homestay Mây Hồng)\n- Hoa hồng nền tảng: 8% x 1.500.000đ = 120.000 VNĐ!`);
+    }
+
+    function generateAiTripWithTransport() {
+      const btn = document.getElementById('btn-generate-ai');
+      btn.innerHTML = '<span>⏳ AI đang phân bổ lộ trình, chọn xe và tính ngân sách...</span>';
+      setTimeout(() => {
+        btn.innerHTML = '<span>✨ AI Phân Bổ Lịch Trình & Phí Xe</span>';
+        alert('✅ AI đã phân bổ xong lịch trình!\n- Đã chọn Xe Limousine An Phát đưa đón khứ hồi (1.200.000đ)\n- Đã chọn thuê xe máy AirBlade 3 ngày (450.000đ)\n- Đã cân đối tổng chi phí 4.650.000 đ nằm trong hạn mức 5.000.000 đ!');
+      }, 1000);
+    }
+  </script>
+</body>
+</html>

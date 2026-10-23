@@ -40,12 +40,12 @@ public class AuthenticationController {
             HttpServletResponse response) throws AppException, ParseException, JOSEException {
         var result = authenticationService.authenticate(authenticationRequest);
         
-        Cookie cookie = new Cookie("accessToken", result.getToken());
-        cookie.setHttpOnly(true);
-        cookie.setSecure(false);
-        cookie.setPath("/");
-        cookie.setMaxAge(3600); // 1 hour
-        response.addCookie(cookie);
+        Cookie refreshCookie = new Cookie("refreshToken", result.getRefreshToken());
+        refreshCookie.setHttpOnly(true);
+        refreshCookie.setSecure(false);
+        refreshCookie.setPath("/");
+        refreshCookie.setMaxAge(7 * 24 * 3600); // 7 days
+        response.addCookie(refreshCookie);
 
         return ApiResponse.<AuthenticationResponse>builder()
                 .result(result)
@@ -68,7 +68,7 @@ public class AuthenticationController {
         if (token == null || token.isEmpty()) {
             if (servletRequest.getCookies() != null) {
                 for (var c : servletRequest.getCookies()) {
-                    if ("accessToken".equals(c.getName())) {
+                    if ("refreshToken".equals(c.getName())) {
                         token = c.getValue();
                         break;
                     }
@@ -80,7 +80,7 @@ public class AuthenticationController {
             authenticationService.logout(LogoutRequest.builder().token(token).build());
         }
         
-        Cookie cookie = new Cookie("accessToken", null);
+        Cookie cookie = new Cookie("refreshToken", null);
         cookie.setHttpOnly(true);
         cookie.setSecure(false);
         cookie.setPath("/");
@@ -100,7 +100,7 @@ public class AuthenticationController {
         if (token == null || token.isEmpty()) {
             if (servletRequest.getCookies() != null) {
                 for (var c : servletRequest.getCookies()) {
-                    if ("accessToken".equals(c.getName())) {
+                    if ("refreshToken".equals(c.getName())) {
                         token = c.getValue();
                         break;
                     }
@@ -110,12 +110,12 @@ public class AuthenticationController {
         
         var result = authenticationService.refreshToken(RefreshRequest.builder().token(token).build());
         
-        Cookie cookie = new Cookie("accessToken", result.getToken());
-        cookie.setHttpOnly(true);
-        cookie.setSecure(false);
-        cookie.setPath("/");
-        cookie.setMaxAge(3600);
-        response.addCookie(cookie);
+        Cookie refreshCookie = new Cookie("refreshToken", result.getRefreshToken());
+        refreshCookie.setHttpOnly(true);
+        refreshCookie.setSecure(false);
+        refreshCookie.setPath("/");
+        refreshCookie.setMaxAge(7 * 24 * 3600); // 7 days
+        response.addCookie(refreshCookie);
 
         return ApiResponse.<AuthenticationResponse>builder()
                 .result(result)

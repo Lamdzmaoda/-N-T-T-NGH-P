@@ -22,7 +22,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-import org.example.backend.service.upload.UploadService;
+
 
 import java.util.HashSet;
 import java.util.List;
@@ -36,7 +36,7 @@ public class UserService {
     UserMapper userMapper;
     RoleRepository roleRepository;
     PasswordEncoder passwordEncoder;
-    UploadService uploadService;
+
 
     public UserResponse createUser(UserRequest userRequest) {
         if(userRepository.existsByUsername(userRequest.getUsername())){
@@ -131,7 +131,6 @@ public class UserService {
         User user = userRepository.findByUsername(name)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
-        String avatarUrl = uploadService.uploadFile(file);
 
         ProfileUser profileUser = user.getProfile();
         if (profileUser == null) {
@@ -139,7 +138,6 @@ public class UserService {
                     .user(user)
                     .build();
         }
-        profileUser.setAvatar_url(avatarUrl);
         user.setProfile(profileUser);
 
         return userMapper.toUserResponse(userRepository.save(user));
