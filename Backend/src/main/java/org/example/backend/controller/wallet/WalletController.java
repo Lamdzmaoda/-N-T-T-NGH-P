@@ -16,6 +16,7 @@ import org.example.backend.service.wallet.WalletService;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
+
 @RestController
 @RequestMapping("/wallets")
 @RequiredArgsConstructor
@@ -35,7 +36,7 @@ public class WalletController {
                 .build();
     }
 
-    @GetMapping("/{type}")
+    @GetMapping("/my-wallets/{type}")
     @Operation(summary = "Lấy danh sách ví", description = "Lấy toàn bộ các ví đang hoạt động của người dùng hiện tại")
     public ApiResponse<List<WalletResponse>> getMyWallets(WalletType type) {
         return ApiResponse.<List<WalletResponse>>builder()
@@ -44,6 +45,7 @@ public class WalletController {
                 .result(walletService.getMyWallets(type))
                 .build();
     }
+
     @GetMapping("/total-balance")
     @Operation(summary = "Lấy tổng tài sản", description = "Tính tổng số dư từ tất cả các ví có includeInTotal = true")
     public ApiResponse<TotalBalanceResponse> getTotalBalance() {
@@ -53,6 +55,7 @@ public class WalletController {
                 .result(walletService.getTotalBalance())
                 .build();
     }
+
     @GetMapping("/{id}")
     @Operation(summary = "Xem chi tiết ví", description = "Xem thông tin chi tiết của 1 ví theo ID")
     public ApiResponse<WalletResponse> getWalletById(@PathVariable String id) {
@@ -62,18 +65,19 @@ public class WalletController {
                 .result(walletService.getWalletById(id))
                 .build();
     }
+
     @PutMapping("/{id}")
     @Operation(summary = "Cập nhật ví", description = "Chỉnh sửa tên ví, loại ví hoặc trạng thái tính vào tổng tài sản")
     public ApiResponse<WalletResponse> updateWallet(
             @PathVariable String id,
-            @RequestBody @Valid WalletUpdateRequest request
-    ) {
+            @RequestBody @Valid WalletUpdateRequest request) {
         return ApiResponse.<WalletResponse>builder()
                 .code(HttpStatus.OK.value())
                 .message("Cập nhật thông tin ví thành công")
                 .result(walletService.updateWallet(id, request))
                 .build();
     }
+
     @DeleteMapping("/{id}")
     @Operation(summary = "Xóa ví (Xóa mềm)", description = "Đánh dấu ngừng hoạt động ví, bảo toàn lịch sử các giao dịch cũ")
     public ApiResponse<String> deleteWallet(@PathVariable String id) {

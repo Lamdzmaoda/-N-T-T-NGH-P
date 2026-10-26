@@ -1,0 +1,94 @@
+opencollection: 1.0.0
+info:
+  name: Đồ án
+config:
+  proxy:
+    inherit: true
+    config:
+      protocol: http
+      hostname: ''
+      port: ''
+      auth:
+        username: ''
+        password: ''
+      bypassProxy: ''
+items:
+  - info:
+      name: Tạo tài khoản
+      type: http
+      seq: 4
+    http:
+      method: POST
+      url: http://localhost:8080/api/users
+      body:
+        type: json
+        data: |-
+          {
+              "username" : "lamdzbodoi9",
+              "password" : "lamdzbodoi",
+              "email" : "lamdzbodoi@gmail.com",
+              "full_name" : "udung", 
+              "phone" : ""
+          }
+      auth: inherit
+    settings:
+      encodeUrl: true
+      timeout: 0
+      followRedirects: true
+      maxRedirects: 5
+      forwardAuthorizationHeader: false
+  - info:
+      name: Tạo ví
+      type: http
+      seq: 1
+    http:
+      method: POST
+      url: http://localhost:8080/api/wallets
+      body:
+        type: json
+        data: |-
+          {
+              "name" : "Ví zalopay",
+              "initialBalance" : 500000,
+              "type" : "CARD",
+              "includeInTotal" : "true"
+          }
+      auth:
+        type: bearer
+        token: eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhZG1pbiIsInNjb3BlIjoiUk9MRV9BRE1JTiIsImlzcyI6ImxhbWR6Ym9kb2kiLCJleHAiOjE3OTI0NjQxNzcsInRva2VuX3R5cGUiOiJBQ0NFU1NfVE9LRU4iLCJpYXQiOjE3OTI0NjMyNzcsImp0aSI6ImNjMGU0NTRjLTkwM2EtNDBjZi1iNjI3LTk4OTYyY2NiMjk5YiJ9.Kiuai-wsOs15rKKIm6finCg3-OcoK6WRxrNYH95hM-RaiKDhGAeg7A96vSJHUe0m-LxlirxrWrEgWe9sEJKu5w
+    settings:
+      encodeUrl: true
+      timeout: 0
+      followRedirects: true
+      maxRedirects: 5
+      forwardAuthorizationHeader: true
+    docs: This request retrieves a list of users from the JSONPlaceholder API.
+  - info:
+      name: Đăng nhập
+      type: http
+      seq: 3
+    http:
+      method: POST
+      url: http://localhost:8080/api/auth/token
+      body:
+        type: json
+        data: |-
+          {
+              "username": "admin",
+              "password": "admin"
+          }
+      auth: inherit
+    settings:
+      encodeUrl: true
+      timeout: 0
+      followRedirects: true
+      maxRedirects: 5
+      forwardAuthorizationHeader: false
+bundled: true
+extensions:
+  bruno:
+    ignore:
+      - node_modules
+      - .git
+    exportedAt: '2026-10-23T03:11:28.143Z'
+    exportedUsing: Bruno
