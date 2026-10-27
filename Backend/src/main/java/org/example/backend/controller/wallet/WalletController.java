@@ -36,13 +36,22 @@ public class WalletController {
                 .build();
     }
 
-    @GetMapping("/my-wallets/{type}")
+    @GetMapping()
     @Operation(summary = "Lấy danh sách ví", description = "Lấy toàn bộ các ví đang hoạt động của người dùng hiện tại")
-    public ApiResponse<List<WalletResponse>> getMyWallets(WalletType type) {
+    public ApiResponse<List<WalletResponse>> getMyWallets() {
         return ApiResponse.<List<WalletResponse>>builder()
                 .code(HttpStatus.OK.value())
                 .message("Lấy danh sách ví thành công")
-                .result(walletService.getMyWallets(type))
+                .result(walletService.getMyWallets())
+                .build();
+    }
+    @GetMapping("/{type}/my-wallets")
+    @Operation(summary = "Lấy danh sách ví", description = "Lấy ví theo loại ví")
+    public ApiResponse<List<WalletResponse>> getMyWalletsByType(WalletType type) {
+        return ApiResponse.<List<WalletResponse>>builder()
+                .code(HttpStatus.OK.value())
+                .message("Lấy danh sách ví thành công")
+                .result(walletService.getMyWalletsOfType(type))
                 .build();
     }
 

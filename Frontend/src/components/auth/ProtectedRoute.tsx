@@ -14,7 +14,7 @@ const ProtectedRoute = () => {
       const init = async () => {
          try {
           // Luôn gọi refresh khi load trang để khôi phục phiên đăng nhập
-          await refresh(token);
+          await refresh();
         } catch (error) {
           console.error("Phiên đăng nhập hết hạn:", error);
         } finally {

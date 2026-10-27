@@ -23,5 +23,5 @@ export interface AuthState {
 
   signOut: () => Promise<void>;
   fetchMe: () => Promise<void>;
-  refresh: (token: string | null) => Promise<void>;
+  refresh: () => Promise<void>;
 }

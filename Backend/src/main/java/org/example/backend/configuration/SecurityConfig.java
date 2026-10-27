@@ -31,9 +31,6 @@ public class SecurityConfig {
             "/users","/auth/token","/auth/introspect","/auth/logout","/auth/refresh"
     };
     private final String[] PUBLIC_GET_ENDPOINTS = {
-            "/places/**",
-            "/categories",
-            "/reviews/**",
             "/swagger-ui.html",
             "/swagger-ui/**",
             "/v3/api-docs/**",

@@ -1,5 +1,6 @@
 import api from "@/lib/axios";
 import type { User } from "@/types/User";
+import { useAuthStore } from "@/stores/useAuthStore";
 
 export const authService = {
   signUp: async (
@@ -36,10 +37,8 @@ export const authService = {
     const res = await api.get("/users/myInfo", {withCredentials: true});
     return res.data.result!;
   },
-  refresh: async (token?: string | null) =>{
-    const res = await api.post("/auth/refresh",{token}, {withCredentials: true});
-
-    return res.data.result?.token;
-
-  }
+  refresh: async (): Promise<string | undefined> => {
+  const res = await api.post("/auth/refresh");
+  return res.data.result?.accessToken; // Bắt buộc phải có chữ 'return' ở đây!
+},
 };

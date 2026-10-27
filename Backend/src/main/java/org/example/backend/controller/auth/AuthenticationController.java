@@ -14,10 +14,7 @@ import org.example.backend.dto.response.auth.AuthenticationResponse;
 import org.example.backend.dto.response.auth.IntrospectResponse;
 import org.example.backend.exception.AppException;
 import org.example.backend.service.auth.AuthenticationService;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -92,29 +89,24 @@ public class AuthenticationController {
     }
     @PostMapping("/refresh")
     ApiResponse<AuthenticationResponse> refresh(
-            @RequestBody RefreshRequest request,
-            HttpServletRequest servletRequest,
+            @CookieValue(name = "refreshToken", required = false) String refreshTokenFromCookie,
+            @RequestBody(required = false) RefreshRequest request,
             HttpServletResponse response) throws ParseException, JOSEException {
-        
-        String token = request.getToken();
-        if (token == null || token.isEmpty()) {
-            if (servletRequest.getCookies() != null) {
-                for (var c : servletRequest.getCookies()) {
-                    if ("refreshToken".equals(c.getName())) {
-                        token = c.getValue();
-                        break;
-                    }
-                }
-            }
+        // 1. Ưu tiên lấy trực tiếp từ HttpOnly Cookie (dành cho Web Frontend)
+        String token = refreshTokenFromCookie;
+        // 2. Nếu không có Cookie thì mới lấy từ Body (dành cho Mobile App / Postman)
+        if ((token == null || token.isEmpty()) && request != null) {
+            token = request.getToken();
         }
-        
+        // 3. Thực hiện xoay vòng token (Rotation)
         var result = authenticationService.refreshToken(RefreshRequest.builder().token(token).build());
-        
+
+        // 4. Cập nhật lại Cookie mới cho trình duyệt
         Cookie refreshCookie = new Cookie("refreshToken", result.getRefreshToken());
         refreshCookie.setHttpOnly(true);
-        refreshCookie.setSecure(false);
+        refreshCookie.setSecure(false); // Đổi thành true khi deploy HTTPS
         refreshCookie.setPath("/");
-        refreshCookie.setMaxAge(7 * 24 * 3600); // 7 days
+        refreshCookie.setMaxAge(7 * 24 * 3600); // 7 ngày
         response.addCookie(refreshCookie);
 
         return ApiResponse.<AuthenticationResponse>builder()

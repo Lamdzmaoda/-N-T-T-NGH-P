@@ -27,12 +27,13 @@ public enum ErrorCode {
     UNAUTHENTICATED(1006, "Unauthenticated", HttpStatus.UNAUTHORIZED),
     UNAUTHORIZED(1007, "You do not have permission", HttpStatus.FORBIDDEN),
     INVALID_DOB(1008, "your age must be at least {min}", HttpStatus.BAD_REQUEST),
-    CATEGORY_NOT_FOUND(1009, "category not found", HttpStatus.NOT_FOUND),
-    PLACE_NOT_FOUND(1010, "place not found", HttpStatus.NOT_FOUND),
+
+    CATEGORY_NOT_FOUND(1010, "category not found", HttpStatus.NOT_FOUND),
     NOT_FOUND(1011, "not found", HttpStatus.NOT_FOUND),
     RATE_LIMIT_EXCEEDED(1012, "Bạn đã vượt quá giới hạn lượt gọi tạo lịch trình (tối đa 3 lần/phút). Vui lòng thử lại sau!", HttpStatus.TOO_MANY_REQUESTS),
     WALLET_NAME_EXISTED(1013, "Wallet exists", HttpStatus.BAD_REQUEST),
-    WALLET_NOT_FOUND(1014,"wallet not exists", HttpStatus.NOT_FOUND)
+    WALLET_NOT_FOUND(1014,"wallet not exists", HttpStatus.NOT_FOUND),
+    CATEGORY_EXISTED(1015, "category extsts", HttpStatus.BAD_REQUEST)
     ;
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {

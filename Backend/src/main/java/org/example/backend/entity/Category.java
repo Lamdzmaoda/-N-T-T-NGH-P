@@ -37,6 +37,7 @@ public class Category {
 
     String color;
 
+    @Builder.Default
     Boolean isDefault = false;
 
 }

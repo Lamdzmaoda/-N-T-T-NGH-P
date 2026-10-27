@@ -4,9 +4,12 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.experimental.NonFinal;
+
+import org.example.backend.constrant.CategoryDefault;
 import org.example.backend.constrant.PredefinedRole;
 import org.example.backend.entity.RBAC.Role;
 import org.example.backend.entity.User.User;
+import org.example.backend.repository.categories.CategoryRepository;
 import org.example.backend.repository.auth.RoleRepository;
 import org.example.backend.repository.auth.UserRepository;
 import org.springframework.boot.ApplicationRunner;
@@ -23,16 +26,19 @@ public class ApplicationInitConfig {
 
     PasswordEncoder passwordEncoder;
 
+    CategoryRepository categoryRepository;
+
     @NonFinal
     static final String ADMIN_USER_NAME = "admin";
 
     @NonFinal
     static final String ADMIN_PASSWORD = "admin";
+
     @Bean
-    ApplicationRunner applicationRunner(UserRepository userRepository,RoleRepository roleRepository) {
+    ApplicationRunner applicationRunner(UserRepository userRepository, RoleRepository roleRepository) {
         return args -> {
             var existingAdmin = userRepository.findByUsername(ADMIN_USER_NAME);
-            if(existingAdmin.isEmpty()){
+            if (existingAdmin.isEmpty()) {
                 // Lưu role USER nếu chưa có
                 if (roleRepository.findById(PredefinedRole.USER_ROLE).isEmpty()) {
                     roleRepository.save(Role.builder()
@@ -60,12 +66,16 @@ public class ApplicationInitConfig {
                         .email(ADMIN_USER_NAME + "@example.com")
                         .roles(roles)
                         .build();
-               userRepository.save(user);
+                userRepository.save(user);
             } else {
                 // Đảm bảo mật khẩu admin luôn là "admin" được mã hóa BCrypt chính xác
                 User user = existingAdmin.get();
                 user.setPassword(passwordEncoder.encode(ADMIN_PASSWORD));
                 userRepository.save(user);
+            }
+
+            if (!categoryRepository.existsByIsDefaultTrue()) {
+                categoryRepository.saveAll(CategoryDefault.defaultCategories);
             }
         };
     }

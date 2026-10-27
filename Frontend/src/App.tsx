@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route } from "react-router";
 import SigninPage from "./pages/SigninPage";
 import SignupPage from "./pages/SignupPage";
-import HomePage from "./pages/HomePage";
+import HomePage from "./pages/DashboardPage";
 import { Toaster } from "sonner";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 function App() {

@@ -2,13 +2,10 @@ import { useAuthStore } from "@/stores/useAuthStore";
 import axios from "axios";
 
 const BASE_URL = import.meta.env.MODE === "development"
-    ? "http://localhost:8080/travel-ai-planner"
-    : "/travel-ai-planner";
+    ? "http://localhost:8080/api"
+    : "/api";
 const api = axios.create({
-  baseURL:
-    import.meta.env.MODE === "development"
-      ? "http://localhost:8080/travel-ai-planner"
-      : "/travel-ai-planner",
+  baseURL: BASE_URL,
   withCredentials: true,
 });
 
@@ -41,11 +38,8 @@ api.interceptors.response.use(
 
       console.log("refresh", originalRequest._retryCount);
       try {
-        const res = await axios.post(
-            `${BASE_URL}/auth/refresh`,
-            { token }
-        );
-        const newAccessToken = res.data.result?.token;
+        const res = await axios.post(`${BASE_URL}/auth/refresh`, {}, { withCredentials: true });
+        const newAccessToken = res.data.result?.accessToken;
 
         if (newAccessToken) {
           console.log(
@@ -61,6 +55,7 @@ api.interceptors.response.use(
         }
       } catch (error) {
         useAuthStore.getState().clearState();
+        window.location.href = "/signin"; // Chuyển về login ngay, chấm dứt vòng lặp!
         return Promise.reject(error);
       }
     }
