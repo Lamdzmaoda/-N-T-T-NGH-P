@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.example.backend.dto.ApiResponse;
+import org.example.backend.dto.request.auth.ChangePasswordRequest;
 import org.example.backend.dto.request.auth.UserRequest;
 import org.example.backend.dto.request.auth.UserUpdateRequest;
 import org.example.backend.dto.response.auth.UserResponse;
@@ -34,9 +35,17 @@ public class UserController {
         return apiResponse;
     }
     @PutMapping("/{UserId}")
-    public UserResponse updateUser(@RequestBody  UserUpdateRequest userUpdateRequest, @PathVariable("UserId") String userId)
+    public ApiResponse<UserResponse> updateUser(@RequestBody @Valid  UserUpdateRequest userUpdateRequest, @PathVariable("UserId") String userId)
     {
-        return userService.updateUser(userUpdateRequest,userId);
+        return ApiResponse.<UserResponse>builder()
+                .result(userService.updateUser(userUpdateRequest,userId))
+                .build();
+    }
+    @PutMapping("/changePassword")
+    public ApiResponse<Void> changePassword(@RequestBody @Valid ChangePasswordRequest request){
+        userService.updatePassword(request);
+        return ApiResponse.<Void>builder()
+                .build();
     }
     @GetMapping
     public List<UserResponse> getUsers()

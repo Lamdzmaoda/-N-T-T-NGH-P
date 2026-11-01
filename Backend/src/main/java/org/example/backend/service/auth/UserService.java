@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.example.backend.constrant.PredefinedRole;
+import org.example.backend.dto.request.auth.ChangePasswordRequest;
 import org.example.backend.dto.request.auth.UserRequest;
 import org.example.backend.dto.request.auth.UserUpdateRequest;
 import org.example.backend.dto.response.auth.UserResponse;
@@ -36,6 +37,7 @@ public class UserService {
     UserMapper userMapper;
     RoleRepository roleRepository;
     PasswordEncoder passwordEncoder;
+    private final AuthenticationService authenticationService;
 
 
     public UserResponse createUser(UserRequest userRequest) {
@@ -88,22 +90,7 @@ public class UserService {
     public UserResponse updateUser(UserUpdateRequest request, String userId) {
         User user = userRepository.findById(userId).orElseThrow();
 
-        // ✅ Lưu lại mật khẩu đã mã hóa cũ đề phòng request không gửi mật khẩu mới
-        String oldPassword = user.getPassword();
-
         userMapper.updateUser(request, user);
-
-        // ✅ Chỉ mã hóa lại mật khẩu khi request thực sự truyền mật khẩu mới
-        if (request.getPassword() != null && !request.getPassword().trim().isEmpty()) {
-            user.setPassword(passwordEncoder.encode(request.getPassword()));
-        } else {
-            user.setPassword(oldPassword);
-        }
-
-        if (request.getRoles() != null) {
-            var roles = roleRepository.findAllById(request.getRoles());
-            user.setRoles(new HashSet<>(roles));
-        }
         ProfileUser profileUser = user.getProfile();
         if(profileUser == null){
             profileUser = ProfileUser.builder().user(user).build();
@@ -117,6 +104,21 @@ public class UserService {
         user.setProfile(profileUser);
         return userMapper.toUserResponse(userRepository.save(user));
     }
+    public void updatePassword(ChangePasswordRequest request){
+        var user = authenticationService.getUserByContext();
+
+        if(!passwordEncoder.matches(request.getOldPassword(), user.getPassword()))
+            throw new AppException(ErrorCode.OLD_PASSWORD_INCORRECT);
+        if(passwordEncoder.matches(request.getNewPassword(), user.getPassword())){
+            throw new AppException(ErrorCode.PASSWORD_SAME_AS_OLD);
+        }
+        if(!request.getNewPassword().equals(request.getConfirmPassword())){
+            throw new AppException(ErrorCode.PASSWORD_NOT_MATCH);
+        }
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+    }
+
     @PreAuthorize("hasRole('ADMIN')")
     public void deleteUser(String userId) {
         log.info("đã xóa thành công");

@@ -1,6 +1,5 @@
 import api from "@/lib/axios";
-import type { User } from "@/types/User";
-import { useAuthStore } from "@/stores/useAuthStore";
+
 
 export const authService = {
   signUp: async (

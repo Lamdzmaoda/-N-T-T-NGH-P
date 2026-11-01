@@ -58,7 +58,9 @@ public class WalletService {
         return walletMapper.toWalletResponse(walletRepository.save(wallet));
      }
     public List<WalletResponse> getMyWallets() {
-        return walletRepository.findAll().stream().map(walletMapper::toWalletResponse).toList();
+        User user = authenticationService.getUserByContext();
+        return walletRepository.findByUserIdAndIsActiveTrue(user.getId())
+                .stream().map(walletMapper::toWalletResponse).toList();
     }
     public List<WalletResponse> getMyWalletsOfType(WalletType type) {
         User user = authenticationService.getUserByContext();

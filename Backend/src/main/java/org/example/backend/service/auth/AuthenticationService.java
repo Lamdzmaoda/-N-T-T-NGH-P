@@ -124,6 +124,7 @@ public class AuthenticationService {
         return userRepository.findByUsername(username).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
     }
 
+
     public AuthenticationResponse refreshToken(RefreshRequest request) throws ParseException, JOSEException {
         if (request.getToken() == null || request.getToken().isEmpty()) {
             throw new AppException(ErrorCode.UNAUTHENTICATED);

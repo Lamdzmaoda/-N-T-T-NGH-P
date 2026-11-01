@@ -1,5 +1,6 @@
 package org.example.backend.dto.request.auth;
 
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -22,6 +23,8 @@ public class  UserRequest {
     String email;
     @Size(min = 8, message = "PASSWORD_INVALID")
     String password;
+    @NotBlank(message = "PHONE_REQUIRED")
+    @Size(min = 10, message = "PHONE_INVALID")
     String phone;
     @DobConstraint(min = 18, message = "INVALID_DOB")
     LocalDate dob;

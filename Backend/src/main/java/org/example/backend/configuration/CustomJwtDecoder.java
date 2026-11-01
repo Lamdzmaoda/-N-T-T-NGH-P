@@ -6,6 +6,7 @@ import javax.crypto.spec.SecretKeySpec;
 
 import org.example.backend.dto.request.auth.IntrospectRequest;
 import org.example.backend.service.auth.AuthenticationService;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
@@ -29,8 +30,9 @@ public class CustomJwtDecoder implements JwtDecoder {
 
     private NimbusJwtDecoder nimbusJwtDecoder = null;
 
+    @NotNull
     @Override
-    public Jwt decode(String token) throws JwtException {
+    public Jwt decode(@NotNull String token) throws JwtException {
 
         try {
             var response = authenticationService.introspect(

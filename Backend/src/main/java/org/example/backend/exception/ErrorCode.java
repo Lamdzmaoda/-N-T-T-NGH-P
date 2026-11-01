@@ -20,7 +20,7 @@ public enum ErrorCode {
 
     // Lỗi Validation: Mật khẩu quá ngắn
     PASSWORD_INVALID(1003, "password must be at least {min} characters", HttpStatus.BAD_REQUEST),
-
+    PHONE_INVALID(1004, "phone must be at least {min} characters", HttpStatus.BAD_REQUEST),
     // Lỗi khi tìm kiếm hoặc cập nhật một người dùng không có trong DB
     USER_NOT_EXISTED(1005, "user not exists", HttpStatus.NOT_FOUND),
 
@@ -33,7 +33,20 @@ public enum ErrorCode {
     RATE_LIMIT_EXCEEDED(1012, "Bạn đã vượt quá giới hạn lượt gọi tạo lịch trình (tối đa 3 lần/phút). Vui lòng thử lại sau!", HttpStatus.TOO_MANY_REQUESTS),
     WALLET_NAME_EXISTED(1013, "Wallet exists", HttpStatus.BAD_REQUEST),
     WALLET_NOT_FOUND(1014,"wallet not exists", HttpStatus.NOT_FOUND),
-    CATEGORY_EXISTED(1015, "category extsts", HttpStatus.BAD_REQUEST)
+    CATEGORY_EXISTED(1015, "category extsts", HttpStatus.BAD_REQUEST),
+    OLD_PASSWORD_INCORRECT(1017, "Old password is incorrect", HttpStatus.BAD_REQUEST),
+    PASSWORD_SAME_AS_OLD(1018, "New password cannot be the same as the old password", HttpStatus.BAD_REQUEST),
+    PASSWORD_NOT_MATCH(1019, "Confirm password does not match", HttpStatus.BAD_REQUEST),
+    WALLET_REQUIRED(1020, "Wallet is required", HttpStatus.BAD_REQUEST),
+    AMOUNT_REQUIRED(1021, "Amount is required", HttpStatus.BAD_REQUEST),
+    AMOUNT_MUST_BE_GREATER_THAN_ZERO(1022, "Amount must be greater than 0", HttpStatus.BAD_REQUEST),
+    TRANSACTION_TYPE_REQUIRED(1023, "Transaction type is required", HttpStatus.BAD_REQUEST),
+    TRANSACTION_NOT_FOUND(1024, "Transaction not found", HttpStatus.NOT_FOUND),
+    INSUFFICIENT_BALANCE(1025, "Insufficient wallet balance", HttpStatus.BAD_REQUEST),
+    DESTINATION_WALLET_REQUIRED(1026, "Destination wallet is required for transfer", HttpStatus.BAD_REQUEST),
+    SAME_WALLET_TRANSFER(1027, "Source and destination wallets must be different", HttpStatus.BAD_REQUEST),
+    CATEGORY_REQUIRED(1028, "Category is required for expense or income", HttpStatus.BAD_REQUEST),
+    INVALID_TRANSACTION_TYPE(1029, "Transcaction type invalid", HttpStatus.BAD_REQUEST)
     ;
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {

@@ -1,6 +1,7 @@
 package org.example.backend.configuration;
 
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -38,6 +39,8 @@ public class SecurityConfig {
     };
     @Value("${jwt.signerKey}")
     private String jwtSignerKey;
+    @Autowired
+    private CustomJwtDecoder customJwtDecoder;
 
     @Value("${cors.allowed-origins}")
     private java.util.List<String> allowedOrigins;
@@ -64,7 +67,7 @@ public class SecurityConfig {
                     }
                     return null;
                 })
-                .jwt(jwt -> jwt.decoder(jwtDecoder())
+                .jwt(jwt -> jwt.decoder(customJwtDecoder)
                         .jwtAuthenticationConverter(jwtAuthenticationConverter()))
                 .authenticationEntryPoint(new JwtAuthenticationEntryPoint())
         );
