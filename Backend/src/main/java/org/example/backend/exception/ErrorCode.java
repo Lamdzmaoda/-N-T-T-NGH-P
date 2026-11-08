@@ -46,7 +46,23 @@ public enum ErrorCode {
     DESTINATION_WALLET_REQUIRED(1026, "Destination wallet is required for transfer", HttpStatus.BAD_REQUEST),
     SAME_WALLET_TRANSFER(1027, "Source and destination wallets must be different", HttpStatus.BAD_REQUEST),
     CATEGORY_REQUIRED(1028, "Category is required for expense or income", HttpStatus.BAD_REQUEST),
-    INVALID_TRANSACTION_TYPE(1029, "Transcaction type invalid", HttpStatus.BAD_REQUEST)
+    INVALID_TRANSACTION_TYPE(1029, "Transcaction type invalid", HttpStatus.BAD_REQUEST),
+    // Ngân sách (Budget)
+    BUDGET_ALREADY_EXISTS(1030, "Budget for this category in the month already exists", HttpStatus.BAD_REQUEST),
+    BUDGET_NOT_FOUND(1031, "Budget not found", HttpStatus.NOT_FOUND),
+    // Sổ nợ (Debt & Loan)
+    DEBT_LOAN_NOT_FOUND(1032, "Debt loan not found", HttpStatus.NOT_FOUND),
+    INVALID_REPAYMENT_AMOUNT(1033, "Repayment amount exceeds remaining debt", HttpStatus.BAD_REQUEST),
+    DEBT_LOAN_ALREADY_PAID(1034, "Debt loan is already fully paid", HttpStatus.BAD_REQUEST),
+    PARTNER_NOT_REGISTERED(1035, "Partner does not have an app account to receive in-app reminders", HttpStatus.BAD_REQUEST),
+    CANNOT_REMIND_BORROWED_DEBT(1036, "Cannot send debt reminder for money you borrowed", HttpStatus.BAD_REQUEST),
+    // Sổ nợ mở rộng (P2P Confirmation & Anti-Spam)
+    DEBT_REMINDER_COOLDOWN(1037, "You can only send one debt reminder every 24 hours", HttpStatus.BAD_REQUEST),
+    DEBT_NOT_PENDING_CONFIRMATION(1038, "Debt is not in pending confirmation status", HttpStatus.BAD_REQUEST),
+    UNAUTHORIZED_DEBT_ACTION(1039, "You are not authorized to perform action on this debt", HttpStatus.FORBIDDEN),
+    CANNOT_REMIND_UNCONFIRMED_DEBT(1040, "Cannot send reminders for unconfirmed or rejected debt", HttpStatus.BAD_REQUEST),
+    PENDING_DEBT_EXISTS(1041, "You already have a pending debt confirmation request with this partner", HttpStatus.BAD_REQUEST),
+    CREATION_TOO_FREQUENT(1042, "Action too fast. Please wait a few seconds before creating another debt", HttpStatus.TOO_MANY_REQUESTS),
     ;
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {

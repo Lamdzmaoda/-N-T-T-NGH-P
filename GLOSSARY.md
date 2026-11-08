@@ -63,3 +63,23 @@ _Avoid_: Group, Tag, Label, Type
 **Budget**:
 Hạn mức chi tiêu tối đa được đặt cho một Danh mục cụ thể trong một khoảng thời gian (thường là theo tháng).
 _Avoid_: Limit, Cap, Plan
+
+### Tích lũy & Công nợ
+
+**SavingGoal**:
+Mục tiêu tích lũy tài chính có kỳ hạn và đích số tiền cần đạt (ví dụ: Quỹ du lịch, Mua laptop). Tiền tích lũy được trích từ Ví người dùng.
+_Avoid_: PiggyBank, SavingAccount, Jar
+
+**DebtLoan**:
+Khoản tiền theo dõi công nợ giữa người dùng và cá nhân khác. Phân loại thành `DEBT` (người dùng nợ người khác) hoặc `LOAN` (người khác nợ người dùng).
+_Avoid_: Borrow, Lend, CreditRecord
+
+### Trí tuệ nhân tạo (AI Engine)
+
+**Receipt OCR Vision**:
+Khả năng sử dụng mô hình đa phương thức (Gemini Vision) quét ảnh chụp hóa đơn tính tiền để tự động trích xuất cấu trúc giao dịch (số tiền, ngày, danh mục, địa điểm).
+_Avoid_: ImageScanner, PhotoReader
+
+**Financial Advisor Bot**:
+Cố vấn tài chính cá nhân ứng dụng LLM (Spring AI ChatClient) kết hợp dữ liệu thu chi thực tế trong tháng để đưa ra gợi ý tối ưu ngân sách theo quy tắc tài chính chuẩn (50/30/20).
+_Avoid_: ChatAI, Assistant, AutoBot

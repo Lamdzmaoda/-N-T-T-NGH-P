@@ -1,4 +1,7 @@
+import type { CashFlowResponse, CategoryExpenseResponse, DashboardSummaryResponse } from "./analytics";
+import type { BudgetProgressResponse, BudgetRequest } from "./budget";
 import type { Category } from "./category";
+import type { NotificationResponse } from "./notification";
 import type { Transaction, TransactionRequest, TransferRequest } from "./transaction";
 import type { User } from "./User";
 import type { TotalBalanceResponse, Wallet } from "./wallet";
@@ -52,4 +55,31 @@ export interface CategoryState {
   categories: Category[];
   loading: boolean;
   fetchAllCategories: () => Promise<void>;
+}
+export interface AnalyticsState {
+  summary: DashboardSummaryResponse | null;
+  cashFlow: CashFlowResponse[];
+  categoryExpenses: CategoryExpenseResponse[];
+  loading: boolean;
+  isCashFlowLoading: boolean;
+  isCategoryExpensesLoading: boolean
+  fetchDashboardSummary: (month?: number, year?: number) => Promise<void>;
+  fetchCashFlow:(year?: number) => Promise<void>;
+  fetchCategoryExpenses:(day?: number, month?: number, year?: number) => Promise<void>
+}
+export interface BudgetState{
+  budgets: BudgetProgressResponse[];
+  loading: boolean;
+  fetchBudgetProgress: (month?: number, year?: number) => Promise<void>;
+  createBudget: (data: BudgetRequest) => Promise<void>;
+  deleteBudget: (id: string) => Promise<void>;
+}
+export interface NotificationState{
+  notifications: NotificationResponse[],
+  unreadCount: number,
+  loading: boolean,
+  fetchNotifications: () => Promise<void>,
+  markAsRead: (id: string) => Promise<void>,
+  markAllAsRead:() => Promise<void>,
+  addRealtimeNotification: (notification: NotificationResponse) => void;
 }

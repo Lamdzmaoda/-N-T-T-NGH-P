@@ -14,6 +14,7 @@ import org.example.backend.entity.Transaction;
 import org.example.backend.entity.User.User;
 import org.example.backend.entity.Wallet;
 import org.example.backend.enums.TransactionType;
+import org.example.backend.event.createEvent.TransactionCreatedEvent;
 import org.example.backend.exception.AppException;
 import org.example.backend.exception.ErrorCode;
 import org.example.backend.mapper.transaction.TransactionMapper;
@@ -21,6 +22,7 @@ import org.example.backend.repository.categories.CategoryRepository;
 import org.example.backend.repository.transaction.TransactionRepository;
 import org.example.backend.repository.wallet.WalletRepository;
 import org.example.backend.service.auth.AuthenticationService;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -40,6 +42,7 @@ public class TransactionService {
     CategoryRepository categoryRepository;
     AuthenticationService authenticationService;
     TransactionMapper transactionMapper;
+    ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public TransactionResponse createTransaction(TransactionRequest request) {
@@ -74,6 +77,10 @@ public class TransactionService {
             transaction.setTransactionDate(LocalDateTime.now());
         }
         Transaction saved = transactionRepository.save(transaction);
+
+        if(saved.getType() == TransactionType.EXPENSE && saved.getCategory() != null){
+            eventPublisher.publishEvent(new TransactionCreatedEvent(this, saved));
+        }
         return transactionMapper.toTransactionResponse(saved);
     }
 

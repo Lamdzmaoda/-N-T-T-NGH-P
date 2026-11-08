@@ -10,18 +10,36 @@ import {
   MoreHorizontal,
 } from "lucide-react";
 import { useWalletStore } from "@/stores/useWalletStore";
+import { useAnalyticsStore } from "@/stores/useAnalyticsStore";
 
 export function StatCards() {
   const { totalBalance, fetchTotalBalance, loading } = useWalletStore();
+  const { summary, fetchDashboardSummary} = useAnalyticsStore();
+
 
   useEffect(() => {
     fetchTotalBalance();
-  }, [fetchTotalBalance]);
+    fetchDashboardSummary()
+  }, [fetchTotalBalance, fetchDashboardSummary]);
 
   const formatCurrency = (val?: number) => {
     if (val === undefined || val === null) return "0";
     return new Intl.NumberFormat("vi-VN").format(val);
   };
+
+  const formatRate = (rate?: number) => {
+    if(rate === undefined || rate === null) return "--%";
+
+    const sign = rate > 0 ? "+" : "";
+    return `${sign}${rate.toFixed(1).replace(".",",")}%`
+  };
+
+  
+    // 1. Kiểm tra tăng / giảm thực tế dựa theo tỉ lệ tăng trưởng %
+  const isNetWorthUp = (summary?.netWorthGrowthRate ?? 0) >= 0;
+  const isIncomeUp = (summary?.incomeGrowthRate ?? 0) >= 0;
+  const isExpenseUp = (summary?.expenseGrowthRate ?? 0) >= 0;
+  const isSavingsPositive = (summary?.totalSavings ?? 0) >= 0;
 
   const stats = [
     {
@@ -29,38 +47,42 @@ export function StatCards() {
       amount: formatCurrency(totalBalance?.totalBalance),
       currency: `${totalBalance?.currency ?? "VND"}`,
       badge: `${totalBalance?.totalWallets ?? 0} ví`,
-      change: "8,3%",
-      trend: "up",
+      change: formatRate(summary?.netWorthGrowthRate),
+      trend: isNetWorthUp ? "up" : "down",
+      trendColor: isNetWorthUp ? "text-emerald-600" : "text-rose-600",
       subtext: "so với tháng trước",
       icon: Wallet,
       iconBg: "bg-blue-50 text-blue-600",
     },
     {
       title: "Thu nhập tháng này",
-      amount: "33.000.000",
+      amount: formatCurrency(summary?.totalIncome),
       currency: "₫",
-      change: "+12,5%",
-      trend: "up",
+      change: formatRate(summary?.incomeGrowthRate),
+      trend: isIncomeUp ? "up" : "down" ,
+      trendColor: isIncomeUp ? "text-emerald-600" : "text-rose-600",
       subtext: "so với tháng trước",
-      icon: ArrowUpRight,
-      iconBg: "bg-emerald-50 text-emerald-600",
+      icon: isIncomeUp ? ArrowUpRight : ArrowDownRight,
+      iconBg: isIncomeUp? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600",
     },
     {
       title: "Chi tiêu tháng này",
-      amount: "18.420.000",
+      amount: formatCurrency(summary?.totalExpense),
       currency: "₫",
-      change: "-5,4%",
-      trend: "down",
+      change: formatRate(summary?.expenseGrowthRate),
+      trend: isExpenseUp ? "up" : "down",
+      trendColor: isExpenseUp ? "text-rose-600" : "text-emerald-600",
       subtext: "so với tháng trước",
-      icon: ArrowDownRight,
-      iconBg: "bg-rose-50 text-rose-600",
+      icon: isExpenseUp ? ArrowUpRight : ArrowDownRight,
+      iconBg: isExpenseUp ? "bg-rose-50 text-rose-600" : "bg-emerald-50 text-emerald-600",
     },
     {
       title: "Tiết kiệm",
-      amount: "14.580.000",
+      amount: formatCurrency(summary?.totalSavings),
       currency: "₫",
-      change: "+21,7%",
-      trend: "up",
+      change: isSavingsPositive ? "Dương" : "âm",
+      trend: isSavingsPositive ? "up" : "down",
+      trendColor: isSavingsPositive ? "text-emerald-600" : "text-rose-600",
       subtext: "so với tháng trước",
       icon: PiggyBank,
       iconBg: "bg-purple-50 text-purple-600",
@@ -121,10 +143,7 @@ export function StatCards() {
               {/* Phần trăm tăng / giảm */}
               <div className="mt-3 flex items-center gap-1.5 text-[11px] font-medium">
                 <span
-                  className={`inline-flex items-center gap-0.5 font-bold ${
-                    isUp ? "text-emerald-600" : "text-rose-600"
-                  }`}
-                >
+                  className={`inline-flex items-center gap-0.5 font-bold ${stat.trendColor}`}>
                   {isUp ? (
                     <TrendingUp className="h-3.5 w-3.5" />
                   ) : (

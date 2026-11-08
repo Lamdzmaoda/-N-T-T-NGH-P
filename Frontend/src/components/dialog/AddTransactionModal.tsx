@@ -23,6 +23,8 @@ import { useWalletStore } from "@/stores/useWalletStore";
 import { useTransactionStore } from "@/stores/useTransactionStore";
 import { categoryService } from "@/services/categoryService";
 import type { Category } from "@/types/category";
+import { useAnalyticsStore } from "@/stores/useAnalyticsStore";
+import { useBudgetStore } from "@/stores/useBudgetStore";
 
 interface AddTransactionModalProps {
   open: boolean;
@@ -107,7 +109,7 @@ const AddTransactionModal = ({
           sourceWalletId: walletId,
           destinationWalletId,
           amount: numericAmount,
-          transactionDate: new Date(transactionDate).toISOString(),
+          transactionDate: transactionDate ? `${transactionDate}:00` : undefined,
           note: note.trim() || undefined,
         });
       } else {
@@ -124,11 +126,13 @@ const AddTransactionModal = ({
           categoryId,
           amount: numericAmount,
           type: activeTab,
-          transactionDate: new Date(transactionDate).toISOString(),
+          transactionDate: transactionDate ? `${transactionDate}:00` : undefined,
           note: note.trim() || undefined,
         });
       }
       await fetchTotalBalance();
+      await useAnalyticsStore.getState().fetchDashboardSummary();
+      await useBudgetStore.getState().fetchBudgetProgress()
       handleClose();
     } catch (error) {
       console.error(error);

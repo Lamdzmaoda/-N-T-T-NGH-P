@@ -4,6 +4,7 @@ import SignupPage from "./pages/SignupPage";
 import HomePage from "./pages/DashboardPage";
 import { Toaster } from "sonner";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
+
 function App() {
   return (
     <>
@@ -14,7 +15,6 @@ function App() {
           <Route path="/signin" element={<SigninPage />} />
 
           <Route path="/signup" element={<SignupPage />} />
-
           {/* private routes */}
           <Route element={<ProtectedRoute />}>
               <Route path="/" element={<HomePage />} />

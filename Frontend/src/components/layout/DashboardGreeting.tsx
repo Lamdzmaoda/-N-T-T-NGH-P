@@ -14,6 +14,7 @@ export function DashboardGreeting() {
     month: '2-digit', 
     year: 'numeric' 
   })
+  const hello = new Date().toLocaleTimeString('vi-VN')
   return (
     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div>

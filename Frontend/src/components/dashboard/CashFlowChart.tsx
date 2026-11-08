@@ -1,23 +1,28 @@
-import React, { useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts"
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
+import React, { useEffect, useState } from "react";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  ResponsiveContainer,
+} from "recharts";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart";
+import { useAnalyticsStore } from "@/stores/useAnalyticsStore";
+import { Loader2 } from "lucide-react";
 
-// Dữ liệu mẫu 12 tháng (Thu nhập vs Chi tiêu)
-const monthlyData = [
-  { month: "T1", income: 28, expense: 19 },
-  { month: "T2", income: 35, expense: 22 },
-  { month: "T3", income: 30, expense: 18 },
-  { month: "T4", income: 42, expense: 25 },
-  { month: "T5", income: 38, expense: 20 },
-  { month: "T6", income: 45, expense: 28 },
-  { month: "T7", income: 40, expense: 22 },
-  { month: "T8", income: 48, expense: 30 },
-  { month: "T9", income: 36, expense: 24 },
-  { month: "T10", income: 52, expense: 32 },
-  { month: "T11", income: 46, expense: 26 },
-  { month: "T12", income: 55, expense: 35 },
-]
+
 
 const chartConfig = {
   income: {
@@ -28,10 +33,27 @@ const chartConfig = {
     label: "Chi tiêu",
     color: "#93C5FD", // Xanh nhạt chuẩn Figma
   },
-}
+};
 
 export function CashFlowChart() {
-  const [selectedYear, setSelectedYear] = useState("2026")
+  const currentYear = new Date().getFullYear().toString();
+  const [selectedYear, setSelectedYear] = useState<string>(currentYear);
+
+  const { cashFlow, isCashFlowLoading, fetchCashFlow } = useAnalyticsStore();
+
+  useEffect(() => {
+    fetchCashFlow(Number(selectedYear));
+  }, [selectedYear, fetchCashFlow]);
+
+  const formatYAxis = (val: number) => {
+    if (val == 0) return "0";
+    if (val >= 1_000_000_000)
+      return `${(val / 1_000_000_000).toFixed(1).replace(/\.0$/, "")} tỷ`;
+    if (val >= 1_000_000)
+      return `${(val / 1_000_000).toFixed(1).replace(/\.0$/, "")}tr`;
+    if (val >= 1_000) return `${(val / 1_000).toFixed(0)}k`;
+    return `${val}`;
+  };
 
   return (
     <Card className="col-span-1 lg:col-span-8 border border-slate-200/80 shadow-xs rounded-2xl bg-white p-2 sm:p-4">
@@ -41,7 +63,7 @@ export function CashFlowChart() {
             Dòng tiền
           </CardTitle>
           <CardDescription className="text-xs text-slate-500 mt-0.5">
-            Thu nhập và chi tiêu 12 tháng gần nhất
+            Thu nhập và chi tiêu 12 tháng năm {selectedYear}
           </CardDescription>
         </div>
 
@@ -70,37 +92,70 @@ export function CashFlowChart() {
       </CardHeader>
 
       <CardContent className="px-2 pt-2">
-        <ChartContainer config={chartConfig} className="h-\[220px\] w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={monthlyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }} barGap={2}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
-              <XAxis
-                dataKey="month"
-                stroke="#94A3B8"
-                fontSize={10}
-                tickLine={false}
-                axisLine={false}
-              />
-              <YAxis
-                stroke="#94A3B8"
-                fontSize={10}
-                tickLine={false}
-                axisLine={false}
-                tickFormatter={(value) => `${value}tr`}
-              />
-              <ChartTooltip
-                cursor={{ fill: "rgba(241, 245, 249, 0.6)" }}
-                content={<ChartTooltipContent indicator="dashed" />}
-              />
-              {/* 2 Cột: Thu nhập (xanh đậm) & Chi tiêu (xanh nhạt) bo góc đầu cột */}
-              <Bar dataKey="income" fill="#2563EB" radius={[4, 4, 0, 0]} maxBarSize={10} />
-              <Bar dataKey="expense" fill="#93C5FD" radius={[4, 4, 0, 0]} maxBarSize={10} />
-            </BarChart>
-          </ResponsiveContainer>
-        </ChartContainer>
+        {isCashFlowLoading && cashFlow.length === 0 ? (
+          <div className="h-55 w-full flex items-center justify-center text-slate-400 gap-2">
+            <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+            <span className="text-xs">Đang tải dữ liệu dòng tiền...</span>
+          </div>
+        ) : (
+          <ChartContainer config={chartConfig} className="h-\[260px\] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={cashFlow}
+                margin={{ top: 10, right: 10, left: 5, bottom: 0 }}
+                barGap={2}
+              >
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  vertical={false}
+                  stroke="#F1F5F9"
+                />
+                <XAxis
+                  dataKey="month"
+                  stroke="#94A3B8"
+                  fontSize={10}
+                  tickLine={false}
+                  axisLine={false}
+                />
+                <YAxis
+                  stroke="#94A3B8"
+                  fontSize={10}
+                  tickLine={false}
+                  axisLine={false}
+                  width={70}
+                  tickFormatter={formatYAxis}
+                />
+                <ChartTooltip
+                  cursor={{ fill: "rgba(241, 245, 249, 0.6)" }}
+                  content={
+                    <ChartTooltipContent
+                      indicator="dashed"
+                      formatter={(value) =>
+                        `${Number(value).toLocaleString("vi-VN")} đ`
+                      }
+                    />
+                  }
+                />
+                {/* 2 Cột: Thu nhập (xanh đậm) & Chi tiêu (xanh nhạt) bo góc đầu cột */}
+                <Bar
+                  dataKey="income"
+                  fill="#2563EB"
+                  radius={[4, 4, 0, 0]}
+                  maxBarSize={16}
+                />
+                <Bar
+                  dataKey="expense"
+                  fill="#93C5FD"
+                  radius={[4, 4, 0, 0]}
+                  maxBarSize={16}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </ChartContainer>
+        )}
       </CardContent>
     </Card>
-  )
+  );
 }
 
-export default CashFlowChart
+export default CashFlowChart;
