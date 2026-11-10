@@ -18,6 +18,12 @@ public interface DebtLoanMapper {
     DebtLoan toDebtLoan(DebtLoanRequest request);
     // Tự động lấy id từ object partnerUser ánh xạ vào partnerUserId trong response
     @Mapping(source = "partnerUser.id", target = "partnerUserId")
+    @Mapping(source = "user.id", target = "creator.id")
+    @Mapping(source = "user.username", target = "creator.username")
+    @Mapping(source = "user.email", target = "creator.email")
+    @Mapping(source = "user.phone", target = "creator.phone")
+    @Mapping(source = "user.full_name", target = "creator.fullName")
+    @Mapping(source = "user.profile.avatar_url", target = "creator.avatarUrl")
     // Tự động tính cờ isOverdue
     @Mapping(target = "isOverdue", expression = "java(debtLoan.getDueDate() != null && java.time.LocalDate.now().isAfter(debtLoan.getDueDate()) && debtLoan.getStatus() != org.example.backend.enums.DebtLoanStatus.PAID)")
     DebtLoanResponse toDebtLoanResponse(DebtLoan debtLoan);

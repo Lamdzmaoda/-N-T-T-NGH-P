@@ -3,6 +3,7 @@ package org.example.backend.dto.response.debt;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+import org.example.backend.dto.response.auth.UserSearchResponse;
 import org.example.backend.enums.DebtLoanStatus;
 import org.example.backend.enums.DebtLoanType;
 import java.math.BigDecimal;
@@ -33,5 +34,7 @@ public class DebtLoanResponse {
     String bankAccountName;
     boolean isOverdue;
     LocalDateTime createdAt;
+    UserSearchResponse creator;     // Thông tin người tạo khoản nợ
+    LocalDateTime lastRemindedAt; // Thời điểm nhắc nợ gần nhất (phục vụ bộ đếm 24h)
 }
 

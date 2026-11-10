@@ -1,5 +1,6 @@
 package org.example.backend.dto.request.debt;
 
+import jakarta.validation.constraints.FutureOrPresent;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -25,6 +26,7 @@ public class DebtLoanRequest {
     BigDecimal amount;
     @NotNull(message = "Loại công nợ không được để trống")
     DebtLoanType type; // LOAN hoặc DEBT
+    @FutureOrPresent(message = "Hạn trả nợ phải từ ngày hôm nay trở đi")
     LocalDate dueDate;
     String note;
     String bankName;

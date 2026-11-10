@@ -9,6 +9,7 @@ import org.example.backend.dto.request.auth.ChangePasswordRequest;
 import org.example.backend.dto.request.auth.UserRequest;
 import org.example.backend.dto.request.auth.UserUpdateRequest;
 import org.example.backend.dto.response.auth.UserResponse;
+import org.example.backend.dto.response.auth.UserSearchResponse;
 import org.example.backend.entity.RBAC.Role;
 import org.example.backend.entity.User.ProfileUser;
 import org.example.backend.entity.User.User;
@@ -17,6 +18,8 @@ import org.example.backend.exception.ErrorCode;
 import org.example.backend.mapper.auth.UserMapper;
 import org.example.backend.repository.auth.RoleRepository;
 import org.example.backend.repository.auth.UserRepository;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PostAuthorize;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -41,7 +44,7 @@ public class UserService {
 
 
     public UserResponse createUser(UserRequest userRequest) {
-        if(userRepository.existsByUsername(userRequest.getUsername())){
+        if (userRepository.existsByUsername(userRequest.getUsername())) {
             throw new AppException(ErrorCode.USER_EXISTED);
         }
 
@@ -67,11 +70,13 @@ public class UserService {
 
         return userMapper.toUserResponse(user);
     }
+
     @PreAuthorize("hasRole('ADMIN')")
     public List<UserResponse> getAllUsers() {
-        return userRepository.findAll().stream().map(userMapper :: toUserResponse).toList();
+        return userRepository.findAll().stream().map(userMapper::toUserResponse).toList();
 
     }
+
     @PostAuthorize("returnObject.username == authentication.name")
     public UserResponse getUser(String userId) {
         User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
@@ -86,33 +91,35 @@ public class UserService {
 
         return userMapper.toUserResponse(user);
     }
+
     @PreAuthorize("hasRole('ADMIN')")
     public UserResponse updateUser(UserUpdateRequest request, String userId) {
         User user = userRepository.findById(userId).orElseThrow();
 
         userMapper.updateUser(request, user);
         ProfileUser profileUser = user.getProfile();
-        if(profileUser == null){
+        if (profileUser == null) {
             profileUser = ProfileUser.builder().user(user).build();
         }
-        if(request.getAvatarUrl() != null){
+        if (request.getAvatarUrl() != null) {
             profileUser.setAvatar_url(request.getAvatarUrl());
         }
-        if(request.getBio() != null){
+        if (request.getBio() != null) {
             profileUser.setBio(request.getBio());
         }
         user.setProfile(profileUser);
         return userMapper.toUserResponse(userRepository.save(user));
     }
-    public void updatePassword(ChangePasswordRequest request){
+
+    public void updatePassword(ChangePasswordRequest request) {
         var user = authenticationService.getUserByContext();
 
-        if(!passwordEncoder.matches(request.getOldPassword(), user.getPassword()))
+        if (!passwordEncoder.matches(request.getOldPassword(), user.getPassword()))
             throw new AppException(ErrorCode.OLD_PASSWORD_INCORRECT);
-        if(passwordEncoder.matches(request.getNewPassword(), user.getPassword())){
+        if (passwordEncoder.matches(request.getNewPassword(), user.getPassword())) {
             throw new AppException(ErrorCode.PASSWORD_SAME_AS_OLD);
         }
-        if(!request.getNewPassword().equals(request.getConfirmPassword())){
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
             throw new AppException(ErrorCode.PASSWORD_NOT_MATCH);
         }
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
@@ -143,5 +150,25 @@ public class UserService {
         user.setProfile(profileUser);
 
         return userMapper.toUserResponse(userRepository.save(user));
+    }
+
+    public List<UserSearchResponse> searchUsers(String keyword) {
+        if (keyword == null || keyword.trim().length() < 2) {
+            return List.of();
+        }
+        User currentUser = authenticationService.getUserByContext();
+        Pageable pageable = PageRequest.of(0, 10);
+
+        List<User> users = userRepository.searchUsers(currentUser.getId(), keyword.trim(), pageable);
+
+        return users.stream().map(u -> UserSearchResponse.builder()
+                        .id(u.getId())
+                        .username(u.getUsername())
+                        .email(u.getEmail())
+                        .phone(u.getPhone())
+                        .fullName(u.getFull_name())
+                        .avatarUrl(u.getProfile() != null ? u.getProfile().getAvatar_url() : null)
+                        .build())
+                .toList();
     }
 }

@@ -10,7 +10,9 @@ import org.example.backend.dto.request.auth.ChangePasswordRequest;
 import org.example.backend.dto.request.auth.UserRequest;
 import org.example.backend.dto.request.auth.UserUpdateRequest;
 import org.example.backend.dto.response.auth.UserResponse;
+import org.example.backend.dto.response.auth.UserSearchResponse;
 import org.example.backend.service.auth.UserService;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -79,5 +81,11 @@ public class UserController {
         ApiResponse<UserResponse> apiResponse = new ApiResponse<>();
         apiResponse.setResult(userService.uploadAvatar(file));
         return apiResponse;
+    }
+    @GetMapping("/search")
+    public ApiResponse<List<UserSearchResponse>> searchUsers(@RequestParam("keyword") String keyword) {
+        return ApiResponse.<List<UserSearchResponse>>builder()
+                .result(userService.searchUsers(keyword))
+                .build();
     }
 }

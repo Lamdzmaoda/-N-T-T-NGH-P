@@ -23,15 +23,21 @@ public class CategoryDefault {
                     .isDefault(true).build(),
             Category.builder().name("Giáo dục").type(CategoryType.EXPENSE).icon("graduation-cap").color("#00BCD4")
                     .isDefault(true).build(),
+            Category.builder().name("Trả nợ").type(CategoryType.EXPENSE).icon("hand-holding-dollar").color("#E53935")
+                    .isDefault(true).build(),
             // Khoản thu (INCOME) - 4 danh mục
             Category.builder().name("Tiền lương").type(CategoryType.INCOME).icon("wallet").color("#4CAF50")
                     .isDefault(true).build(),
-            Category.builder().name("Thưởng").type(CategoryType.INCOME).icon("gift").color("#FFC107").isDefault(true)
-                    .build(),
+            Category.builder().name("Thưởng").type(CategoryType.INCOME).icon("gift").color("#FFC107")
+                    .isDefault(true).build(),
             Category.builder().name("Đầu tư").type(CategoryType.INCOME).icon("chart-line").color("#3F51B5")
                     .isDefault(true).build(),
             Category.builder().name("Thu nhập phụ").type(CategoryType.INCOME).icon("coins").color("#009688")
+                    .isDefault(true).build(),
+            Category.builder().name("Thu hồi nợ").type(CategoryType.INCOME).icon("handshake").color("#43A047")
                     .isDefault(true).build());
+
+
 
     private CategoryDefault() {
     }

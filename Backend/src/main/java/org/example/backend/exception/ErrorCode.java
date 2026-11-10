@@ -63,6 +63,7 @@ public enum ErrorCode {
     CANNOT_REMIND_UNCONFIRMED_DEBT(1040, "Cannot send reminders for unconfirmed or rejected debt", HttpStatus.BAD_REQUEST),
     PENDING_DEBT_EXISTS(1041, "You already have a pending debt confirmation request with this partner", HttpStatus.BAD_REQUEST),
     CREATION_TOO_FREQUENT(1042, "Action too fast. Please wait a few seconds before creating another debt", HttpStatus.TOO_MANY_REQUESTS),
+    CANNOT_ASSIGN_DEBT_TO_SELF(1043, "Cannot assign debt to yourself", HttpStatus.BAD_REQUEST)
     ;
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {

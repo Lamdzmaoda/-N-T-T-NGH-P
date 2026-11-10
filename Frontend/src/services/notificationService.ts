@@ -2,8 +2,6 @@ import api from "@/lib/axios";
 import type { ApiResponse } from "@/types/api";
 import type { NotificationListResponse } from "@/types/notification";
 
-
-
 export const notificationService = {
     getMyNotifications : async (): Promise<NotificationListResponse> => {
         const res = await api.get<ApiResponse<NotificationListResponse>>("/notifications");

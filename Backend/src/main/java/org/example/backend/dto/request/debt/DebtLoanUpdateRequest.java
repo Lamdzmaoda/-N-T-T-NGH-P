@@ -1,5 +1,6 @@
 package org.example.backend.dto.request.debt;
 
+import jakarta.validation.constraints.FutureOrPresent;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import java.time.LocalDate;
@@ -17,6 +18,7 @@ import java.time.LocalDate;
 public class DebtLoanUpdateRequest {
     String personName;
     String phone;
+    @FutureOrPresent(message = "Hạn trả nợ phải từ ngày hôm nay trở đi")
     LocalDate dueDate;
     String note;
     // Thông tin ngân hàng bổ sung sau này để sinh VietQR

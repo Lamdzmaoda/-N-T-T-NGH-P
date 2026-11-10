@@ -12,18 +12,25 @@ import org.example.backend.dto.response.debt.DebtLoanDetailResponse;
 import org.example.backend.dto.response.debt.DebtLoanResponse;
 import org.example.backend.dto.response.debt.DebtLoanSummaryResponse;
 import org.example.backend.dto.response.debt.DebtRepaymentResponse;
+import org.example.backend.entity.Category;
+import org.example.backend.entity.Transaction;
 import org.example.backend.entity.User.User;
+import org.example.backend.entity.Wallet;
 import org.example.backend.entity.debt.DebtLoan;
 import org.example.backend.entity.debt.DebtRepayment;
 import org.example.backend.enums.DebtLoanStatus;
 import org.example.backend.enums.DebtLoanType;
+import org.example.backend.enums.TransactionType;
 import org.example.backend.event.createEvent.DebtLoanEvent;
 import org.example.backend.exception.AppException;
 import org.example.backend.exception.ErrorCode;
 import org.example.backend.mapper.debt.DebtLoanMapper;
 import org.example.backend.repository.auth.UserRepository;
+import org.example.backend.repository.categories.CategoryRepository;
 import org.example.backend.repository.debt.DebtLoanRepository;
 import org.example.backend.repository.debt.DebtRepaymentRepository;
+import org.example.backend.repository.transaction.TransactionRepository;
+import org.example.backend.repository.wallet.WalletRepository;
 import org.example.backend.service.auth.AuthenticationService;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -48,6 +55,9 @@ public class DebtLoanService {
     DebtRepaymentRepository debtRepaymentRepository;
     DebtLoanMapper debtLoanMapper;
     ApplicationEventPublisher eventPublisher;
+    WalletRepository walletRepository;
+    CategoryRepository categoryRepository;
+    TransactionRepository transactionRepository;
 
     @Transactional
     public DebtLoanResponse createDebtLoan(DebtLoanRequest request) {
@@ -70,8 +80,12 @@ public class DebtLoanService {
             }
         }
         User partnerUser = null;
-        if (request.getPartnerUserId() != null && !request.getPartnerUserId().equals(currentUser.getId())) {
-            partnerUser = userRepository.findById(request.getPartnerUserId()).orElseThrow(() -> new AppException(ErrorCode.USER_EXISTED));
+        if (request.getPartnerUserId() != null) {
+            if (request.getPartnerUserId().equals(currentUser.getId())) {
+                throw new AppException(ErrorCode.CANNOT_ASSIGN_DEBT_TO_SELF);
+            }
+            partnerUser = userRepository.findById(request.getPartnerUserId())
+                    .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
         }
 
         DebtLoan debtLoan = debtLoanMapper.toDebtLoan(request);
@@ -156,7 +170,7 @@ public class DebtLoanService {
     public DebtRepaymentResponse recordRepayment(String debtLoanId, DebtRepaymentRequest request) {
         User currentUser = authenticationService.getUserByContext();
 
-        DebtLoan debtLoan = debtLoanRepository.findByIdAndUserIdAndIsActiveTrue(debtLoanId, currentUser.getId())
+        DebtLoan debtLoan = debtLoanRepository.findByIdAndUserIdForUpdate(debtLoanId, currentUser.getId())
                 .orElseThrow(() -> new AppException(ErrorCode.DEBT_LOAN_NOT_FOUND));
 
         if (debtLoan.getStatus() == DebtLoanStatus.PAID) {
@@ -179,7 +193,41 @@ public class DebtLoanService {
                 ? request.getPaymentMethod()
                 : "CASH";
         LocalDateTime repDate = request.getRepaymentDate() != null ? request.getRepaymentDate() : LocalDateTime.now();
+        if(request.getWalletId() != null && !request.getWalletId().isBlank()) {
+            Wallet wallet = walletRepository.findByIdAndUserIdAndIsActiveTrue(request.getWalletId(), currentUser.getId())
+                    .orElseThrow(() -> new AppException(ErrorCode.WALLET_NOT_FOUND));
 
+            TransactionType txType = null;
+            String categoryName = "";
+            String defaultNote = "";
+
+            if(debtLoan.getType() == DebtLoanType.DEBT) {
+                txType = TransactionType.EXPENSE;
+                categoryName = "Trả nợ";
+                defaultNote = "Trả nợ cho: " + debtLoan.getPersonName();
+                wallet.debit(payAmount);
+            }else if (debtLoan.getType() == DebtLoanType.LOAN) {
+                txType = TransactionType.INCOME;
+                categoryName = "Thu hồi nợ";
+                defaultNote = "Thu hồi nợ từ: " + debtLoan.getPersonName();
+                wallet.credit(payAmount);
+            }
+            walletRepository.save(wallet);
+
+            Category category = categoryRepository.findByNameAndIsDefaultTrue(categoryName).orElse(null);
+
+            Transaction transaction = Transaction.builder()
+                    .user(currentUser)
+                    .wallet(wallet)
+                    .category(category)
+                    .amount(payAmount)
+                    .type(txType)
+                    .transactionDate(repDate)
+                    .note(request.getNote() != null && !request.getNote().isBlank() ? request.getNote() : defaultNote)
+                    .balanceAfter(wallet.getBalance())
+                    .build();
+            transactionRepository.save(transaction);
+        }
         DebtRepayment repayment = DebtRepayment.builder()
                 .debtLoan(debtLoan)
                 .amount(payAmount)
@@ -192,6 +240,12 @@ public class DebtLoanService {
         debtLoanRepository.save(debtLoan);
         if(debtLoan.getLinkedDebtLoanId() != null) {
             debtLoanRepository.findById(debtLoan.getLinkedDebtLoanId()).ifPresent(linkedDebt -> {
+                if(!linkedDebt.getIsActive()){
+                    // Đối tác đã xóa mềm nợ bên họ ➔ tự động gỡ liên kết để người hiện tại vẫn trả nợ bình thường
+                    debtLoan.setLinkedDebtLoanId(null);
+                    debtLoanRepository.save(debtLoan);
+                    return;
+                }
                 BigDecimal linkedNewRemaining = linkedDebt.getRemainingAmount().subtract(payAmount);
                 if(linkedNewRemaining.compareTo(BigDecimal.ZERO) < 0){
                     linkedNewRemaining = BigDecimal.ZERO;
@@ -206,7 +260,8 @@ public class DebtLoanService {
                         .amount(payAmount)
                         .repaymentDate(repDate)
                         .paymentMethod(method)
-                        .note("[Đồng bộ] " + (request.getNote() != null ? request.getNote() : ""))
+                        .note("Đồng bộ thanh toán từ đối tác: " + (currentUser.getFull_name() != null
+                                ? currentUser.getFull_name() : currentUser.getUsername()))
                         .build();
                 debtRepaymentRepository.save(linkedRepayment);
             });
@@ -409,7 +464,7 @@ public class DebtLoanService {
     }
     private ConfirmationContext confirm(String id){
         User currentUser = authenticationService.getUserByContext();
-        DebtLoan originalDebt = debtLoanRepository.findById(id)
+        DebtLoan originalDebt = debtLoanRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new AppException(ErrorCode.DEBT_LOAN_NOT_FOUND));
 
         if(!originalDebt.getIsActive()){
