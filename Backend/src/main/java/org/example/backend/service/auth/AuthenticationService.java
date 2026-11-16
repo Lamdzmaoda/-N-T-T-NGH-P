@@ -156,6 +156,19 @@ public class AuthenticationService {
                 .build();
     }
 
+    public String extractUserIdFromToken(String token) {
+        try {
+            SignedJWT signedJWT = verifyToken(token, false);
+            String username = signedJWT.getJWTClaimsSet().getSubject();
+            User user = userRepository.findByUsername(username)
+                    .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+            return user.getId();
+        } catch (Exception e) {
+            log.error("Không thể giải mã User ID từ JWT: {}", e.getMessage());
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+    }
+
     private String signToken(JWTClaimsSet jwtClaimsSet) {
         JWSHeader header = new JWSHeader(JWSAlgorithm.HS512);
         Payload payload = new Payload(jwtClaimsSet.toJSONObject());

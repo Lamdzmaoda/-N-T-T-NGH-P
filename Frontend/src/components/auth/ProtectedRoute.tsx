@@ -1,3 +1,4 @@
+import { useWebSocket } from '@/hooks/useWebSocket';
 import { useAuthStore } from '@/stores/useAuthStore'
 import React, { useEffect, useRef, useState } from 'react'
 import { Navigate, Outlet } from 'react-router';
@@ -8,6 +9,7 @@ const ProtectedRoute = () => {
     const [starting, setStarting] = useState(true);
     const hasCalledRef = useRef(false);
     
+    useWebSocket();
     useEffect(() => {
       if (hasCalledRef.current) return;
       hasCalledRef.current = true;
