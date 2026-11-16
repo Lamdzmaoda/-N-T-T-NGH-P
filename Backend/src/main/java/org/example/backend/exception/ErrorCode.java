@@ -46,7 +46,10 @@ public enum ErrorCode {
     DESTINATION_WALLET_REQUIRED(1026, "Destination wallet is required for transfer", HttpStatus.BAD_REQUEST),
     SAME_WALLET_TRANSFER(1027, "Source and destination wallets must be different", HttpStatus.BAD_REQUEST),
     CATEGORY_REQUIRED(1028, "Category is required for expense or income", HttpStatus.BAD_REQUEST),
-    INVALID_TRANSACTION_TYPE(1029, "Transcaction type invalid", HttpStatus.BAD_REQUEST)
+    INVALID_TRANSACTION_TYPE(1029, "Transcaction type invalid", HttpStatus.BAD_REQUEST),
+    // Ngân sách (Budget)
+    BUDGET_ALREADY_EXISTS(1030, "Budget for this category in the month already exists", HttpStatus.BAD_REQUEST),
+    BUDGET_NOT_FOUND(1031, "Budget not found", HttpStatus.NOT_FOUND)
     ;
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {
