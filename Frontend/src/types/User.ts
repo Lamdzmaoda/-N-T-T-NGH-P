@@ -17,4 +17,25 @@ export interface User {
   avatarUrl?: string | null; // Cần cho hiển thị avatar trên header / profile
   bio?: string | null;
   roles?: Role[];            // Cần cho việc phân quyền (ADMIN, USER, ...)
+  isActive?: boolean;     // Trạng thái tài khoản (true: hoạt động, false: đã khóa)
+  provider?: string;      // NORMAL hoặc GOOGLE
+  create_at?: string;     // Ngày tạo
+}
+export interface PageResponse<T> {
+  content: T[];
+  totalElements: number;
+  totalPages: number;
+  size: number;
+  number: number;         // Trang hiện tại (0-indexed)
+  first: boolean;
+  last: boolean;
+  empty: boolean;
+}
+export interface AdminUserFilterParams{
+  keyword?: string;
+  role?: string;
+  startDate?: string;
+  endDate?: string;
+  page?: number;
+  size?: number;
 }

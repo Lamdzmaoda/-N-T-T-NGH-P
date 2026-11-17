@@ -17,6 +17,8 @@ import org.example.backend.exception.ErrorCode;
 import org.example.backend.mapper.auth.UserMapper;
 import org.example.backend.repository.auth.RoleRepository;
 import org.example.backend.repository.auth.UserRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PostAuthorize;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -25,8 +27,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 
 @Service // Đánh dấu là tầng Service, nơi xử lý logic nghiệp vụ
 @RequiredArgsConstructor // Tự động Inject các Repository, Mapper, Encoder qua Constructor
@@ -143,5 +149,30 @@ public class UserService {
         user.setProfile(profileUser);
 
         return userMapper.toUserResponse(userRepository.save(user));
+    }
+    @PreAuthorize("hasRole('ADMIN')")
+    public UserResponse toggleUserStatus(String userId){
+        User user = userRepository.findById(userId).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+
+        boolean currentStatus = user.getIsActive() != null ? user.getIsActive() : true;
+
+        user.setIsActive(!currentStatus);
+
+        return userMapper.toUserResponse(userRepository.save(user));
+    }
+    @PreAuthorize("hasRole('ADMIN')")
+    public Page<UserResponse> getUsersWithFilters(
+            String keyword,
+            String role,
+            LocalDate startDate,
+            LocalDate endDate,
+            Pageable pageable
+    ){
+        LocalDateTime start = startDate != null ? startDate.atStartOfDay() : null;
+        LocalDateTime end = endDate != null ? endDate.atTime(LocalTime.MAX) : null;
+
+        Page<User> userPage = userRepository.findUsersWithFilters(keyword, role, start, end, pageable);
+
+        return userPage.map(userMapper::toUserResponse);
     }
 }

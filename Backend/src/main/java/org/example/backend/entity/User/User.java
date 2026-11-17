@@ -36,6 +36,12 @@ public class User {
     String full_name;
     @ManyToMany
     Set<Role> roles;
+    // Trạng thái tài khoản: true = Đang hoạt động, false = Đã khóa
+    @Builder.Default
+    Boolean isActive = true;
+    // Loại tài khoản: NORMAL (đăng ký bằng mật khẩu) hoặc GOOGLE
+    @Builder.Default
+    String provider = "NORMAL";
     @CreationTimestamp
     LocalDateTime create_at;
     @UpdateTimestamp

@@ -6,6 +6,7 @@ import lombok.experimental.FieldDefaults;
 import org.example.backend.entity.RBAC.Role;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Set;
 
 @Data
@@ -24,6 +25,9 @@ public class UserResponse{
     Set<RoleResponse> roles;
     String avatarUrl;
     String bio;
+    Boolean isActive;
+    String provider;
+    LocalDateTime create_at;
 }
 
 

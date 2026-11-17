@@ -1,9 +1,10 @@
+
 import type { CashFlowResponse, CategoryExpenseResponse, DashboardSummaryResponse } from "./analytics";
 import type { BudgetProgressResponse, BudgetRequest } from "./budget";
 import type { Category } from "./category";
 import type { NotificationResponse } from "./notification";
 import type { Transaction, TransactionRequest, TransferRequest } from "./transaction";
-import type { User } from "./User";
+import type { AdminUserFilterParams, PageResponse, User } from "./User";
 import type { TotalBalanceResponse, Wallet } from "./wallet";
 
 export interface AuthState {
@@ -30,6 +31,16 @@ export interface AuthState {
   signOut: () => Promise<void>;
   fetchMe: () => Promise<void>;
   refresh: () => Promise<void>;
+}
+export interface AdminUserState {
+  userPage: PageResponse<User> | null;
+  loading: boolean;
+  filters: AdminUserFilterParams;
+  // Actions
+  setFilters: (newFilters: Partial<AdminUserFilterParams>) => void;
+  resetFilters: () => void;
+  fetchUsers: (pageOverride?: number) => Promise<void>;
+  toggleUserStatus: (userId: string) => Promise<void>;
 }
 /**
  * Interface định nghĩa State & Actions cho WalletStore (Quản lý ví và số dư)
