@@ -5,7 +5,7 @@ import HomePage from "./pages/User/DashboardPage";
 import { Toaster } from "sonner";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import AdminUserListPage from "./pages/Admin/AdminUserListPage";
-import AdminLayout from "./components/layout/AdminLayout";
+import AdminLayout from "./components/admin/layout/AdminLayout";
 function App() {
   return (
     <>
