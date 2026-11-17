@@ -7,12 +7,16 @@ import { UserTable } from "@/components/admin/content/UserTable";
 import { toast } from "sonner";
 import UserDetailDialog from "@/components/admin/dialog/UserDetailDialog";
 import UserCreateDialog from "@/components/admin/dialog/UserCreateDialog";
+import UserEditDialog from "@/components/admin/dialog/UserEditDialog";
 
 const AdminUserListPage = () => {
   const { fetchUsers } = useAdminUserStore();
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [isAddOpen, setIsAddOpen] = useState(false);
+
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [isEditOpen, setIsEditOpen] = useState(false)
   useEffect(() => {
     fetchUsers(0);
   }, [fetchUsers]);
@@ -30,7 +34,8 @@ const AdminUserListPage = () => {
           setIsViewOpen(true);
         }}
         onEditUser={(user) => {
-          toast.info(`Tính năng sửa thông tin cho ${user.email} đang chuẩn bị`);
+          setEditingUser(user);
+          setIsEditOpen(true);
         }}
       />
       {/* 3. Modal xem chi tiết */}
@@ -44,6 +49,12 @@ const AdminUserListPage = () => {
         open={isAddOpen}
         onOpenChange={setIsAddOpen}
         onSuccess={() => fetchUsers(0)}
+      />
+      <UserEditDialog
+        user={editingUser}
+        open={isEditOpen}
+        onOpenChange={setIsEditOpen}
+        onSuccess={() => fetchUsers()}
       />
     </div>
   );
