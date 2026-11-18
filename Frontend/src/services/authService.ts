@@ -1,6 +1,5 @@
 import api from "@/lib/axios";
 
-
 export const authService = {
   signUp: async (
     username: string,
@@ -11,33 +10,37 @@ export const authService = {
   ) => {
     const res = await api.post(
       "/users",
-      {username, password, email, phone, full_name},
+      { username, password, email, phone, full_name },
       { withCredentials: true },
     );
 
-    return res.data
+    return res.data;
   },
 
-  signIn: async(
-    username: string,
-    password: string,
-  )=>{
+  signIn: async (username: string, password: string) => {
     const res = await api.post(
       "/auth/token",
-      {username, password},
-      {withCredentials: true},
+      { username, password },
+      { withCredentials: true },
     );
-    return res.data
+    return res.data;
   },
-  signOut: async() =>{
-    return api.post("/auth/logout", {}, {withCredentials: true})
+  signOut: async () => {
+    return api.post("/auth/logout", {}, { withCredentials: true });
   },
-  fetchMe: async() =>{
-    const res = await api.get("/users/myInfo", {withCredentials: true});
+  fetchMe: async () => {
+    const res = await api.get("/users/myInfo", { withCredentials: true });
     return res.data.result!;
   },
   refresh: async (): Promise<string | undefined> => {
-  const res = await api.post("/auth/refresh");
-  return res.data.result?.accessToken; // Bắt buộc phải có chữ 'return' ở đây!
-},
+    const res = await api.post("/auth/refresh");
+    return res.data.result?.accessToken; // Bắt buộc phải có chữ 'return' ở đây!
+  },
+  outboundGoogleLogin: async (code: string) =>{
+    const res =await api.post(`/auth/outbound/google?code=${code}`,{},
+      { params: {code},
+        withCredentials: true }
+    );
+    return res.data;
+  }
 };

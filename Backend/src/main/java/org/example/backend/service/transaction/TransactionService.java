@@ -123,7 +123,7 @@ public class TransactionService {
     @Transactional
     public void deleteTransaction(String id) {
         User user = authenticationService.getUserByContext();
-        Transaction transaction = transactionRepository.findByIdAndUserId(id, user.getId())
+        Transaction transaction = transactionRepository.findByIdAndUserIdAndIsDeletedFalse(id, user.getId())
                 .orElseThrow(() -> new AppException(ErrorCode.TRANSACTION_NOT_FOUND));
 
         Wallet wallet = transaction.getWallet();
@@ -142,17 +142,56 @@ public class TransactionService {
             }
         }
         walletRepository.save(wallet);
-        transactionRepository.delete(transaction);
-
+        transaction.setIsDeleted(true);
+        transaction.setDeletedAt(LocalDateTime.now());
+        transactionRepository.save(transaction);
     }
 
     @Transactional
+    public TransactionResponse restoreTransaction(String id) {
+        User user = authenticationService.getUserByContext();
+        Transaction transaction = transactionRepository.findById(id)
+                .filter(t -> t.getUser().equals(user.getId()) &&
+                        Boolean.TRUE.equals(t.getIsDeleted()))
+                .orElseThrow(() -> new AppException(ErrorCode.TRANSACTION_NOT_FOUND));
+        Wallet wallet = transaction.getWallet();
+        BigDecimal amount = transaction.getAmount();
+
+        if(transaction.getType() == TransactionType.EXPENSE) {
+            wallet.debit(amount);
+        }else  if(transaction.getType() == TransactionType.INCOME) {
+            wallet.credit(amount);
+        }
+        walletRepository.save(wallet);
+
+        transaction.setIsDeleted(false);
+        transaction.setIsDeleted(null);
+
+        return  transactionMapper.toTransactionResponse(transactionRepository.save(transaction));
+
+    }
+    // 3. Xóa vĩnh viễn khỏi Database
+    @Transactional
+    public void permanentDeleteTransaction(String id) {
+        User user = authenticationService.getUserByContext();
+        Transaction transaction = transactionRepository.findById(id)
+                .filter(t -> t.getUser().getId().equals(user.getId()))
+                .orElseThrow(() -> new AppException(ErrorCode.TRANSACTION_NOT_FOUND));
+        transactionRepository.delete(transaction);
+    }
+    // 4. Lấy danh sách giao dịch trong thùng rác
+    public List<TransactionResponse> getTrashTransactions() {
+        User user = authenticationService.getUserByContext();
+        return transactionRepository.findByUserIdAndIsDeletedTrueOrderByDeletedAtDesc(user.getId())
+                .stream().map(transactionMapper::toTransactionResponse).toList();
+    }
+    @Transactional
     public TransactionResponse updateTransaction(String id, TransactionUpdateRequest request) {
         User user = authenticationService.getUserByContext();
-        Transaction transaction = transactionRepository.findByIdAndUserId(id, user.getId())
+        Transaction transaction = transactionRepository.findByIdAndUserIdAndIsDeletedFalse(id, user.getId())
                 .orElseThrow(() -> new AppException(ErrorCode.TRANSACTION_NOT_FOUND));
 
-        if(transaction.getType() == TransactionType.TRANSFER){
+        if (transaction.getType() == TransactionType.TRANSFER) {
             throw new AppException(ErrorCode.SAME_WALLET_TRANSFER);
         }
         Wallet oldWallet = transaction.getWallet();
@@ -160,7 +199,7 @@ public class TransactionService {
         TransactionType type = transaction.getType();
         if (type == TransactionType.EXPENSE) {
             oldWallet.setBalance(oldWallet.getBalance().add(oldAmount)); // Trả lại tiền chi
-        } else{
+        } else {
             oldWallet.setBalance(oldWallet.getBalance().subtract(oldAmount)); // Thu hồi tiền thu
         }
 
@@ -187,7 +226,7 @@ public class TransactionService {
             transaction.setCategory(newCategory);
         }
         walletRepository.save(newWallet);
-        if(!oldWallet.getId().equals(newWallet.getId())) {
+        if (!oldWallet.getId().equals(newWallet.getId())) {
             walletRepository.save(oldWallet);
         }
 
@@ -195,10 +234,10 @@ public class TransactionService {
         transaction.setAmount(newAmount);
         transaction.setBalanceAfter(newWallet.getBalance());
 
-        if(request.getTransactionDate() != null) {
+        if (request.getTransactionDate() != null) {
             transaction.setTransactionDate(request.getTransactionDate());
         }
-        if(request.getNote() != null) {
+        if (request.getNote() != null) {
             transaction.setNote(request.getNote());
         }
         if (request.getImageUrl() != null) {
@@ -208,13 +247,14 @@ public class TransactionService {
         log.info("User {} updated transaction {}", user.getUsername(), updatedTransaction.getId());
         return transactionMapper.toTransactionResponse(updatedTransaction);
     }
+
     @Transactional
     public TransactionResponse updateTransfer(String id, TransferUpdateRequest request) {
         User user = authenticationService.getUserByContext();
 
-        Transaction transaction = transactionRepository.findByIdAndUserId(id, user.getId()).orElseThrow(() -> new AppException(ErrorCode.TRANSACTION_NOT_FOUND));
+        Transaction transaction = transactionRepository.findByIdAndUserIdAndIsDeletedFalse(id, user.getId()).orElseThrow(() -> new AppException(ErrorCode.TRANSACTION_NOT_FOUND));
 
-        if(transaction.getType() != TransactionType.TRANSFER) {
+        if (transaction.getType() != TransactionType.TRANSFER) {
             throw new AppException(ErrorCode.INVALID_TRANSACTION_TYPE);
         }
         Wallet oldSourceWallet = transaction.getWallet();
@@ -222,7 +262,7 @@ public class TransactionService {
         BigDecimal oldAmount = transaction.getAmount();
 
         oldSourceWallet.setBalance(oldSourceWallet.getBalance().add(oldAmount));
-        if(oldDestWallet != null){
+        if (oldDestWallet != null) {
             oldDestWallet.setBalance(oldDestWallet.getBalance().subtract(oldAmount));
         }
 
@@ -230,16 +270,16 @@ public class TransactionService {
 
         Wallet newSourceWallet = oldSourceWallet;
 
-        if(request.getSourceWalletId() != null && (oldDestWallet == null || !request.getDestinationWalletId().equals(oldDestWallet.getId()))){
+        if (request.getSourceWalletId() != null && (oldDestWallet == null || !request.getDestinationWalletId().equals(oldDestWallet.getId()))) {
             newSourceWallet = walletRepository.findByIdAndUserIdAndIsActiveTrue(request.getSourceWalletId(), user.getId())
                     .orElseThrow(() -> new AppException(ErrorCode.WALLET_NOT_FOUND));
         }
         Wallet newDestWallet = oldDestWallet;
-        if(request.getDestinationWalletId() != null && !request.getSourceWalletId().equals(oldSourceWallet.getId())){
+        if (request.getDestinationWalletId() != null && !request.getSourceWalletId().equals(oldSourceWallet.getId())) {
             newDestWallet = walletRepository.findByIdAndUserIdAndIsActiveTrue(request.getDestinationWalletId(), user.getId())
                     .orElseThrow(() -> new AppException(ErrorCode.WALLET_NOT_FOUND));
         }
-        if(newSourceWallet.getId().equals(newDestWallet.getId())){
+        if (newSourceWallet.getId().equals(newDestWallet.getId())) {
             throw new AppException(ErrorCode.SAME_WALLET_TRANSFER);
         }
 
@@ -249,7 +289,7 @@ public class TransactionService {
         walletRepository.save(newSourceWallet);
         walletRepository.save(newDestWallet);
 
-        if(!oldSourceWallet.getId().equals(newSourceWallet.getId()) && !oldSourceWallet.getId().equals(newDestWallet.getId())) {
+        if (!oldSourceWallet.getId().equals(newSourceWallet.getId()) && !oldSourceWallet.getId().equals(newDestWallet.getId())) {
             walletRepository.save(oldSourceWallet);
         }
         if (oldDestWallet != null && !oldDestWallet.getId().equals(newSourceWallet.getId()) && !oldDestWallet.getId().equals(newDestWallet.getId())) {
@@ -274,7 +314,7 @@ public class TransactionService {
 
     public List<TransactionResponse> getRecentTransaction() {
         User user = authenticationService.getUserByContext();
-        return transactionRepository.findTop5ByUserIdOrderByTransactionDateDesc(user.getId())
+        return transactionRepository.findTop5ByUserIdAndIsDeletedIsFalseOrderByTransactionDateDesc(user.getId())
                 .stream()
                 .map(transactionMapper::toTransactionResponse)
                 .toList();
@@ -282,7 +322,7 @@ public class TransactionService {
 
     public Page<TransactionResponse> getTransaction(Pageable page) {
         User user = authenticationService.getUserByContext();
-        return transactionRepository.findByUserIdOrderByTransactionDateDesc(user.getId(), page)
+        return transactionRepository.findByUserIdAndIsDeletedFalseOrderByTransactionDateDesc(user.getId(), page)
                 .map(transactionMapper::toTransactionResponse);
     }
 

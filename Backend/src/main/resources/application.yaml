@@ -88,3 +88,11 @@ logging:
     root: INFO
     org.hibernate.SQL: DEBUG
     com.travelplanner: DEBUG
+
+  # ==================== OAUTH2 GOOGLE ====================
+outbound:
+  identity:
+    google:
+      client-id: ${GOOGLE_CLIENT_ID:439501246780-4ivum8o87k04h63qciepbec81p12ljn8.apps.googleusercontent.com}
+      client-secret: ${GOOGLE_CLIENT_SECRET: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}
+      redirect-uri: ${GOOGLE_REDIRECT_URI:http://localhost:5173/oauth2/callback}

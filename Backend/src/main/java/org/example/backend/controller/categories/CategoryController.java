@@ -56,8 +56,57 @@ public class CategoryController {
     }
     @DeleteMapping("/{id}")
     @Operation(summary = "Xóa ví (Xóa mềm)", description = "Đánh dấu ngừng hoạt động ví, bảo toàn lịch sử các giao dịch cũ")
-    public ApiResponse<Void> deleteWallet(@PathVariable String id) {
+    public ApiResponse<Void> deleteCategory(@PathVariable String id) {
         categoryService.deleteCategory(id);
         return ApiResponse.<Void>builder().build();
+    }
+    @PutMapping("/trash/{id}")
+    @Operation(summary = "Khôi phục", description = "Khôi phục danh mục")
+    public ApiResponse<Void> restoreCategory(@PathVariable String id) {
+        categoryService.restoreCategory(id);
+        return ApiResponse.<Void>builder()
+                .build();
+
+    }
+
+    @GetMapping("/admin")
+    @Operation(summary = "Admin lấy danh sách tất cả danh mục")
+    public ApiResponse<List<CategoryResponse>> getCategoriesForAdmin() {
+        return ApiResponse.<List<CategoryResponse>>builder()
+
+                .result(categoryService.getAllCategoriesForAdmin())
+                .build();
+    }
+    @PostMapping("/admin")
+    @ResponseStatus(HttpStatus.CREATED)
+    @Operation(summary = "Admin tạo danh mục mặc định của hệ thống")
+    public ApiResponse<CategoryResponse> createSystemCategory(@RequestBody @Valid CategoryRequest request) {
+        return ApiResponse.<CategoryResponse>builder()
+                .result(categoryService.createSystemCategory(request))
+                .build();
+    }
+    @PutMapping("/admin/{id}")
+    @Operation(summary = "Admin cập nhật danh mục hệ thống")
+    public ApiResponse<CategoryResponse> updateSystemCategory(
+            @PathVariable String id,
+            @RequestBody @Valid CategoryRequest request) {
+        return ApiResponse.<CategoryResponse>builder()
+                .result(categoryService.updateSystemCategory(request, id))
+                .build();
+    }
+    @DeleteMapping("/admin/{id}")
+    @Operation(summary = "Admin ẩn hoặc hiện danh mục hệ thống")
+    public ApiResponse<Void> toggleSystemCategoryStatus(@PathVariable String id) {
+        categoryService.toggleSystemCategoryStatus(id);
+        return ApiResponse.<Void>builder()
+                .build();
+    }
+
+    @DeleteMapping("/admin/trash/{id}")
+    @Operation(summary = "Admin xóa hoàn toàn danh mục hệ thống")
+    public ApiResponse<Void> permanentDeleteSystemCategory(@PathVariable String id){
+        categoryService.permanentDeleteSystemCategory(id);
+        return  ApiResponse.<Void>builder()
+                .build();
     }
 }

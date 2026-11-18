@@ -27,6 +27,7 @@ public enum ErrorCode {
     UNAUTHENTICATED(1006, "Unauthenticated", HttpStatus.UNAUTHORIZED),
     UNAUTHORIZED(1007, "You do not have permission", HttpStatus.FORBIDDEN),
     INVALID_DOB(1008, "your age must be at least {min}", HttpStatus.BAD_REQUEST),
+    USER_LOCKED(1009, "Tài khoản của bạn đã bị khóa bởi quản trị viên", HttpStatus.FORBIDDEN),
 
     CATEGORY_NOT_FOUND(1010, "category not found", HttpStatus.NOT_FOUND),
     NOT_FOUND(1011, "not found", HttpStatus.NOT_FOUND),

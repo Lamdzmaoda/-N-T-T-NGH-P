@@ -113,4 +113,19 @@ public class AuthenticationController {
                 .result(result)
                 .build();
     }
+    @PostMapping("/outbound/google")
+    ApiResponse<AuthenticationResponse> outboundGoogleLogin(
+            @RequestParam("code") String code,
+            HttpServletResponse response) {
+        var result = authenticationService.outboundAuthenticate(code);
+        Cookie refreshCookie = new Cookie("refreshToken", result.getRefreshToken());
+        refreshCookie.setHttpOnly(true);
+        refreshCookie.setSecure(false);
+        refreshCookie.setPath("/");
+        refreshCookie.setMaxAge(7 * 24 * 3600); // 7 ngày
+        response.addCookie(refreshCookie);
+        return ApiResponse.<AuthenticationResponse>builder()
+                .result(result)
+                .build();
+    }
 }

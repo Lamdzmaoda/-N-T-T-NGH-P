@@ -55,7 +55,7 @@ public class BudgetService {
         Category category = categoryRepository.findById(request.getCategoryId())
                 .orElseThrow(() -> new AppException(ErrorCode.BUDGET_NOT_FOUND));
 
-        if (budgetRepository.existsByUserIdAndCategoryIdAndMonthAndYear(
+        if (budgetRepository.existsByUserIdAndCategoryIdAndIsDeletedFalseAndMonthAndYear(
                 user.getId(), category.getId(), month, year
         )) {
             throw new AppException(ErrorCode.BUDGET_ALREADY_EXISTS);
@@ -87,7 +87,7 @@ public class BudgetService {
         LocalDateTime start = ym.atDay(1).atStartOfDay();
         LocalDateTime end = ym.atEndOfMonth().atTime(23,59,59,999999999);
 
-        List<Transaction> transactions = transactionRepository.findByUserIdAndTransactionDateBetweenOrderByTransactionDateDesc(user.getId(), start, end)
+        List<Transaction> transactions = transactionRepository.findByUserIdAndIsDeletedIsFalseAndTransactionDateBetweenOrderByTransactionDateDesc(user.getId(), start, end)
                 .stream()
                 .filter(tx -> tx.getType() == TransactionType.EXPENSE && tx.getCategory() != null)
                 .toList();
@@ -113,7 +113,7 @@ public class BudgetService {
     public BudgetProgressResponse updateBudget(String budgetId, BudgetRequest request) {
         User user = authenticationService.getUserByContext();
 
-        Budget budget = budgetRepository.findByIdAndUserId(budgetId, user.getId())
+        Budget budget = budgetRepository.findByIdAndUserIdAndIsDeletedFalse(budgetId, user.getId())
                 .orElseThrow(() -> new AppException(ErrorCode.BUDGET_NOT_FOUND));
 
         budget.setAmount(request.getAmount());
@@ -121,10 +121,37 @@ public class BudgetService {
         budget = budgetRepository.save(budget);
         return calculateProgress(budget, budget.getMonth(), budget.getYear(), user.getId());
     }
+    // 1. Xóa tạm thời vào thùng rác
     @Transactional
     public void deleteBudget(String budgetId) {
         User user = authenticationService.getUserByContext();
-        Budget budget = budgetRepository.findByIdAndUserId(budgetId, user.getId())
+        Budget budget = budgetRepository.findByIdAndUserIdAndIsDeletedFalse(budgetId, user.getId())
+                .orElseThrow(() -> new AppException(ErrorCode.BUDGET_NOT_FOUND));
+
+        budget.setIsDeleted(true);
+        budget.setDeletedAt(LocalDateTime.now());
+        budgetRepository.save(budget);
+    }
+
+    // 2. Khôi phục ngân sách từ thùng rác
+    @Transactional
+    public void restoreBudget(String budgetId) {
+        User user = authenticationService.getUserByContext();
+        Budget budget = budgetRepository.findById(budgetId)
+                .filter(b -> b.getUser().getId().equals(user.getId()) && Boolean.TRUE.equals(b.getIsDeleted()))
+                .orElseThrow(() -> new AppException(ErrorCode.BUDGET_NOT_FOUND));
+
+        budget.setIsDeleted(false);
+        budget.setDeletedAt(null);
+        budgetRepository.save(budget);
+    }
+
+    // 3. Xóa vĩnh viễn khỏi Database
+    @Transactional
+    public void permanentDeleteBudget(String budgetId) {
+        User user = authenticationService.getUserByContext();
+        Budget budget = budgetRepository.findById(budgetId)
+                .filter(b -> b.getUser().getId().equals(user.getId()))
                 .orElseThrow(() -> new AppException(ErrorCode.BUDGET_NOT_FOUND));
 
         budgetRepository.delete(budget);
@@ -135,7 +162,7 @@ public class BudgetService {
         LocalDateTime start = ym.atDay(1).atStartOfDay();
         LocalDateTime end = ym.atEndOfMonth().atTime(23, 59, 59, 999999999);
 
-        List<Transaction> txs = transactionRepository.findByUserIdAndTransactionDateBetweenOrderByTransactionDateDesc(userId, start, end);
+        List<Transaction> txs = transactionRepository.findByUserIdAndIsDeletedIsFalseAndTransactionDateBetweenOrderByTransactionDateDesc(userId, start, end);
 
         BigDecimal spent = txs.stream()
                 .filter(tx -> tx.getType() == TransactionType.EXPENSE

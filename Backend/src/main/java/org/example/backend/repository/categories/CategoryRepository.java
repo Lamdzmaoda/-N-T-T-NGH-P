@@ -15,7 +15,7 @@ public interface CategoryRepository extends JpaRepository<Category, String> {
     // Kiểm tra xem đã có danh mục mặc định nào trong hệ thống chưa
     boolean existsByIsDefaultTrue();
 
-    @Query("SELECT c FROM Category c WHERE c.isDefault = true OR c.user.id = :userId")
+    @Query("SELECT c FROM Category c WHERE (c.isDefault = true OR c.user.id = :userId) AND (c.isActive IS NULL OR c.isActive = true)")
     List<Category> findAllAvailableCategories(@Param("userId") String userId);
 
     boolean existsByIdAndIsDefaultFalseAndUserId(String categoryId, String userId);
@@ -23,4 +23,8 @@ public interface CategoryRepository extends JpaRepository<Category, String> {
     boolean existsByUserIdAndNameIgnoreCase(String userId, String name);
 
     Optional<Category> findByIdAndUserIdAndIsDefaultFalse(String id, String id1);
+
+    List<Category> findByIsDefaultTrueOrderByTypeAscNameAsc();
+
+    boolean existsByIsDefaultTrueAndNameIgnoreCase(String name);
 }

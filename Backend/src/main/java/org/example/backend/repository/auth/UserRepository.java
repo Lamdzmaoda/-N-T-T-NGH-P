@@ -15,7 +15,8 @@ import java.util.Optional;
 public interface UserRepository extends JpaRepository<User,String> {
     boolean existsByUsername(String username);
     Optional<User> findByUsername(String username);
-
+    Optional<User> findByEmail(String email);
+    boolean existsByEmail(String email);
     @Query("""
         SELECT DISTINCT u FROM User u
         LEFT JOIN u.roles r

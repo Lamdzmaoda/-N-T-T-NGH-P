@@ -6,4 +6,5 @@ export interface Category {
   icon?: string;
   color?: string;
   isDefault?: boolean;
+  isActive: boolean;
 }

@@ -11,18 +11,23 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.experimental.NonFinal;
 import lombok.extern.slf4j.Slf4j;
+import org.example.backend.client.GoogleIdentityClient;
+import org.example.backend.constrant.PredefinedRole;
 import org.example.backend.dto.request.auth.AuthenticationRequest;
 import org.example.backend.dto.request.auth.IntrospectRequest;
 import org.example.backend.dto.request.auth.LogoutRequest;
 import org.example.backend.dto.request.auth.RefreshRequest;
 import org.example.backend.dto.response.auth.AuthenticationResponse;
 import org.example.backend.dto.response.auth.IntrospectResponse;
+import org.example.backend.entity.RBAC.Role;
 import org.example.backend.entity.User.InvalidatedToken;
+import org.example.backend.entity.User.ProfileUser;
 import org.example.backend.entity.User.User;
 
 import org.example.backend.exception.AppException;
 import org.example.backend.exception.ErrorCode;
 import org.example.backend.repository.auth.InvalidatedTokenRepository;
+import org.example.backend.repository.auth.RoleRepository;
 import org.example.backend.repository.auth.UserRepository;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -36,10 +41,7 @@ import org.springframework.util.CollectionUtils;
 import java.text.ParseException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.Date;
-import java.util.Objects;
-import java.util.StringJoiner;
-import java.util.UUID;
+import java.util.*;
 
 @Service // Đánh dấu là tầng Service, nơi xử lý logic nghiệp vụ
 @RequiredArgsConstructor // Tự động Inject các Repository, Mapper, Encoder qua Constructor
@@ -58,7 +60,8 @@ public class AuthenticationService {
     @NonFinal
     @Value("${jwt.refresh-token-expiration}")
     protected long REFRESHABLE_DURATION;
-
+    GoogleIdentityClient googleIdentityClient;
+    RoleRepository roleRepository;
     @Transactional
     public AuthenticationResponse authenticate(AuthenticationRequest authenticationRequest) {
         var user = userRepository.findByUsername(authenticationRequest.getUsername())
@@ -123,7 +126,47 @@ public class AuthenticationService {
         String username = Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication()).getName();
         return userRepository.findByUsername(username).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
     }
+    @Transactional
+    public AuthenticationResponse outboundAuthenticate(String code){
+        var googleUser = googleIdentityClient.fetchUserInfo(code);
 
+        User user = userRepository.findByEmail(googleUser.getEmail()).orElseGet(() -> {
+            HashSet<Role> roles = new HashSet<>();
+            roleRepository.findById(PredefinedRole.USER_ROLE).ifPresent(roles::add);
+
+            User newUser = User.builder()
+                    .email(googleUser.getEmail())
+                    .username(googleUser.getEmail())
+                    .full_name(googleUser.getName())
+                    .provider("GOOGLE")
+                    .isActive(true)
+                    .roles(roles)
+                    .build();
+            newUser = userRepository.save(newUser);
+
+            ProfileUser profile = ProfileUser.builder()
+                    .user(newUser)
+                    .avatar_url(googleUser.getPicture() != null ? googleUser.getPicture() : "")
+                    .bio("")
+                    .build();
+            newUser.setProfile(profile);
+            return userRepository.save(newUser);
+        });
+
+        if(Boolean.FALSE.equals(user.getIsActive())){
+            throw new AppException(ErrorCode.USER_LOCKED);
+        }
+
+        Date expiryTime = new Date(Instant.now().plus(REFRESHABLE_DURATION, ChronoUnit.SECONDS).toEpochMilli());
+        var token = generateAccessToken(user);
+        var refreshToken = generateRefreshToken(user, expiryTime);
+
+        return AuthenticationResponse.builder()
+                .accessToken(token)
+                .refreshToken(refreshToken)
+                .authenticated(true)
+                .build();
+    }
 
     public AuthenticationResponse refreshToken(RefreshRequest request) throws ParseException, JOSEException {
         if (request.getToken() == null || request.getToken().isEmpty()) {

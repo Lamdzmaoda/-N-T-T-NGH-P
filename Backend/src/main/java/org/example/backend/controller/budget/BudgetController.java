@@ -1,5 +1,6 @@
 package org.example.backend.controller.budget;
 
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -51,7 +52,21 @@ public class BudgetController {
     public ApiResponse<String> deleteBudget(@PathVariable String id) {
         budgetService.deleteBudget(id);
         return ApiResponse.<String>builder()
-                .result("Xóa ngân sách thành công")
+                .build();
+    }
+    @PutMapping("/trash/{id}/restore")
+    @Operation(summary = "Khôi phục ngân sách từ thùng rác")
+    public ApiResponse<Void> restoreBudget(@PathVariable String id) {
+        budgetService.restoreBudget(id);
+        return ApiResponse.<Void>builder()
+                .build();
+    }
+
+    @DeleteMapping("/trash/{id}")
+    @Operation(summary = "Xóa vĩnh viễn ngân sách khỏi thùng rác")
+    public ApiResponse<Void> permanentDeleteBudget(@PathVariable String id) {
+        budgetService.permanentDeleteBudget(id);
+        return ApiResponse.<Void>builder()
                 .build();
     }
 }

@@ -11,17 +11,18 @@ import java.util.Optional;
 @Repository
 public interface TransactionRepository extends JpaRepository<Transaction, String> {
 
-    Optional<Transaction> findByIdAndUserId(String id, String userId);
+    Optional<Transaction> findByIdAndUserIdAndIsDeletedFalse(String id, String userId);
     // Phân trang danh sách giao dịch của user
-    Page<Transaction> findByUserIdOrderByTransactionDateDesc(String userId, Pageable pageable);
+    Page<Transaction>  findByUserIdAndIsDeletedFalseOrderByTransactionDateDesc(String userId, Pageable pageable);
     // Lấy top 5 giao dịch mới nhất (phục vụ RecentTransactions trên Dashboard)
-    List<Transaction> findTop5ByUserIdOrderByTransactionDateDesc(String userId);
+    List<Transaction> findTop5ByUserIdAndIsDeletedIsFalseOrderByTransactionDateDesc(String userId);
     // Lấy giao dịch theo khoảng ngày (phục vụ biểu đồ CashFlow, ExpenseStructure và thống kê tháng)
-    List<Transaction> findByUserIdAndTransactionDateBetweenOrderByTransactionDateDesc(
+    List<Transaction> findByUserIdAndIsDeletedIsFalseAndTransactionDateBetweenOrderByTransactionDateDesc(
             String userId, LocalDateTime startDate, LocalDateTime endDate
     );
     // Lấy lịch sử giao dịch của 1 ví cụ thể
-    Page<Transaction> findByUserIdAndWalletIdOrderByTransactionDateDesc(
+    Page<Transaction> findByUserIdAndIsDeletedIsFalseAndWalletIdOrderByTransactionDateDesc(
             String userId, String walletId, Pageable pageable
     );
+    List<Transaction> findByUserIdAndIsDeletedTrueOrderByDeletedAtDesc(String  userId);
 }

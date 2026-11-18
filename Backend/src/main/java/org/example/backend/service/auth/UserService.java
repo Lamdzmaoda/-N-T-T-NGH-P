@@ -4,10 +4,12 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.example.backend.client.GoogleIdentityClient;
 import org.example.backend.constrant.PredefinedRole;
 import org.example.backend.dto.request.auth.ChangePasswordRequest;
 import org.example.backend.dto.request.auth.UserRequest;
 import org.example.backend.dto.request.auth.UserUpdateRequest;
+import org.example.backend.dto.response.auth.AuthenticationResponse;
 import org.example.backend.dto.response.auth.UserResponse;
 import org.example.backend.entity.RBAC.Role;
 import org.example.backend.entity.User.ProfileUser;
@@ -24,12 +26,16 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.temporal.ChronoUnit;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -43,6 +49,8 @@ public class UserService {
     UserMapper userMapper;
     RoleRepository roleRepository;
     PasswordEncoder passwordEncoder;
+
+
     private final AuthenticationService authenticationService;
 
 
@@ -110,6 +118,7 @@ public class UserService {
         user.setProfile(profileUser);
         return userMapper.toUserResponse(userRepository.save(user));
     }
+    @PostAuthorize("returnObject.username == authentication.name")
     public void updatePassword(ChangePasswordRequest request){
         var user = authenticationService.getUserByContext();
 
@@ -125,10 +134,14 @@ public class UserService {
         userRepository.save(user);
     }
 
+
+
     @PreAuthorize("hasRole('ADMIN')")
     public void deleteUser(String userId) {
-        log.info("đã xóa thành công");
-        userRepository.deleteById(userId);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+        user.setIsActive(false);
+        userRepository.save(user);
     }
 
     @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")

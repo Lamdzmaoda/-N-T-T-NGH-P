@@ -29,7 +29,6 @@ import java.util.List;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class WalletService {
     WalletRepository walletRepository;
-    UserRepository userRepository;
     WalletMapper walletMapper;
     AuthenticationService authenticationService;
 
@@ -114,6 +113,24 @@ public class WalletService {
                 .currency("VND")
                 .totalWallets(wallets.size())
                 .build();
+    }
+    @Transactional
+    public void restoreWallet(String id){
+        User user = authenticationService.getUserByContext();
+        Wallet wallet = walletRepository.findById(id)
+                .filter(w -> w.getUser().getId().equals(user.getId()))
+                .orElseThrow(() -> new AppException(ErrorCode.WALLET_NOT_FOUND));
+
+        wallet.setIsActive(true);
+        walletRepository.save(wallet);
+    }
+    @Transactional
+    public void permanentDeleteWallet(String id) {
+        User user = authenticationService.getUserByContext();
+        Wallet wallet = walletRepository.findById(id)
+                .filter(w -> w.getUser().getId().equals(user.getId()))
+                .orElseThrow(() -> new AppException(ErrorCode.WALLET_NOT_FOUND));
+        walletRepository.delete(wallet);
     }
 
 }

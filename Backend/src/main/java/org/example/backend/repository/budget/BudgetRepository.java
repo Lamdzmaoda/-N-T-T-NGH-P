@@ -11,11 +11,13 @@ import java.util.Optional;
 
 @Repository
 public interface BudgetRepository extends JpaRepository<Budget,String> {
-    @Query("SELECT b from Budget b JOIN FETCH b.category WHERE b.user.id = :userId and b.month = :month AND b.year = :year")
+    @Query("SELECT b from Budget b JOIN FETCH b.category WHERE b.user.id = :userId and b.month = :month AND b.year = :year And (b.isDeleted IS NULL OR b.isDeleted = false)")
     List<Budget> findByUserIdAndMonthAndYear(@Param("userId") String userId, @Param("month") int month, @Param("year") int year);
 
-    Optional<Budget> findByIdAndUserId(String id, String UserId);
-    Optional<Budget> findByUserIdAndCategoryIdAndMonthAndYear(String user_id, String category_Id, Integer month, Integer year);
+    Optional<Budget> findByIdAndUserIdAndIsDeletedFalse(String id, String UserId);
+    Optional<Budget> findByUserIdAndCategoryIdAndIsDeletedFalseAndMonthAndYear(String user_id, String category_Id, Integer month, Integer year);
 
-    boolean existsByUserIdAndCategoryIdAndMonthAndYear(String user_id, String category_id, Integer month, Integer year);
+    boolean existsByUserIdAndCategoryIdAndIsDeletedFalseAndMonthAndYear(String user_id, String category_id, Integer month, Integer year);
+
+    List<Budget> findByUserIdAndIsDeletedTrueOrderByDeletedAtDesc(String userId);
 }

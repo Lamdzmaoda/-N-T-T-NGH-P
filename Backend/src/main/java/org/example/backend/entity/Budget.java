@@ -60,4 +60,10 @@ public class Budget {
     @UpdateTimestamp
     @Column(name = "updated_at")
     LocalDateTime updatedAt;
+
+    @Builder.Default
+    @Column(name = "is_deleted", nullable = false)
+    Boolean isDeleted = false;
+    @Column(name = "deleted_at")
+    LocalDateTime deletedAt;
 }

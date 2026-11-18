@@ -6,6 +6,7 @@ public record CategoryResponse(
         String type,
         String icon,
         String color,
-        boolean isDefault
+        boolean isDefault,
+        Boolean isActive
 ) {
 }

@@ -62,12 +62,29 @@ export function SigninForm({
     }
   };
 
+  const handleGoogleLogin = () => {
+    const clientId = "439501246780-4ivum8o87k04h63qciepbec81p12ljn8.apps.googleusercontent.com";
+    const redirectUri = "http://localhost:5173/oauth2/callback"
+    const rootUrl = "https://accounts.google.com/o/oauth2/v2/auth";
+
+    const params = new URLSearchParams({
+      client_id: clientId,
+      redirect_uri: redirectUri ,
+      response_type: "code",
+      scope: "openid email profile",
+      access_type: "offline",
+      prompt: "consent",
+    });
+
+    window.location.href = `${rootUrl}?${params.toString()}`;
+  }
+
   return (
     <div className={cn("w-full max-w-5xl mx-auto", className)} {...props}>
       <Card className="overflow-hidden rounded-3xl border border-slate-200/80 shadow-2xl p-0 bg-white">
-        <CardContent className="grid p-0 md:grid-cols-12 min-h-[660px]">
+        <CardContent className="grid p-0 md:grid-cols-12 min-h-165">
           {/* CỘT TRÁI - BRAND SHOWCASE NÂNG CẤP (5 cols) */}
-          <div className="relative hidden md:flex md:col-span-5 flex-col justify-between p-10 text-white overflow-hidden bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-900">
+          <div className="relative hidden md:flex md:col-span-5 flex-col justify-between p-10 text-white overflow-hidden bg-linear-to-br from-blue-600 via-blue-700 to-indigo-900">
             {/* Hiệu ứng Radial Rings & Glow Mesh */}
             <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-blue-400/20 blur-3xl pointer-events-none" />
             <div className="absolute -bottom-24 -right-24 w-96 h-96 rounded-full bg-indigo-500/30 blur-3xl pointer-events-none" />
@@ -299,6 +316,7 @@ export function SigninForm({
               <Button
                 type="button"
                 variant="outline"
+                onClick={handleGoogleLogin}
                 className="w-full h-11 text-sm border-slate-200 hover:bg-slate-50 font-semibold text-slate-700 rounded-xl flex items-center justify-center gap-2.5 transition cursor-pointer"
               >
                 <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24">

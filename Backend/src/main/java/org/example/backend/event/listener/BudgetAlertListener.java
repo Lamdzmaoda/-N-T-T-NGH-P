@@ -69,7 +69,7 @@ public class BudgetAlertListener {
         int year = txDate.getYear();
 
         // 1. Kiểm tra xem người dùng có thiết lập ngân sách cho danh mục này trong tháng/năm không
-        Optional<Budget> budgetOpt = budgetRepository.findByUserIdAndCategoryIdAndMonthAndYear(
+        Optional<Budget> budgetOpt = budgetRepository.findByUserIdAndCategoryIdAndIsDeletedFalseAndMonthAndYear(
                 user.getId(), category.getId(), month, year
         );
 
@@ -92,7 +92,7 @@ public class BudgetAlertListener {
         LocalDateTime end = ym.atEndOfMonth().atTime(23, 59, 59, 999999999);
 
         // Lấy toàn bộ giao dịch trong tháng của người dùng
-        List<Transaction> monthTxs = transactionRepository.findByUserIdAndTransactionDateBetweenOrderByTransactionDateDesc(
+        List<Transaction> monthTxs = transactionRepository.findByUserIdAndIsDeletedIsFalseAndTransactionDateBetweenOrderByTransactionDateDesc(
                 user.getId(), start, end
         );
 

@@ -52,14 +52,19 @@ const AdminLayout = () => {
     location.pathname === "/admin/user/list";
 
   return (
-    <div className="min-h-screen flex bg-muted/30 font-sans text-foreground">
+    <div className="h-screen flex bg-muted/30 font-sans text-foreground overflow-hidden">
       {/* 1. SIDEBAR TRÁI */}
-      <aside className="w-64 bg-card border-r border-border flex flex-col shrink-0">
+      <aside className="w-64 h-full bg-card border-r border-border flex flex-col shrink-0">
         {/* Header Sidebar / Logo */}
         <div className="h-16 flex items-center justify-between px-5 border-b border-border">
           <div className="flex items-center gap-2">
-            <span className="font-black text-lg tracking-wider text-primary">FINFLOW</span>
-            <Badge variant="secondary" className="text-[10px] uppercase font-bold">
+            <span className="font-black text-lg tracking-wider text-primary">
+              FINFLOW
+            </span>
+            <Badge
+              variant="secondary"
+              className="text-[10px] uppercase font-bold"
+            >
               ADMIN
             </Badge>
           </div>
@@ -92,7 +97,7 @@ const AdminLayout = () => {
                     "block px-3 py-1.5 rounded-md text-xs transition-colors",
                     isUserListActive
                       ? "bg-primary/10 text-primary font-bold"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted",
                   )}
                 >
                   Tất cả tài khoản
@@ -108,16 +113,27 @@ const AdminLayout = () => {
             <BookOpen className="size-4" />
             <span>Bài viết</span>
           </div>
-          <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground cursor-pointer transition-colors">
+          <Link
+            to="/admin/categories"
+            className={cn(
+              "flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors",
+              location.pathname === "/admin/categories"
+                ? "bg-primary/10 text-primary font-bold"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground",
+            )}
+          >
             <FolderTree className="size-4" />
             <span>Danh mục</span>
-          </div>
+          </Link>
           <div className="flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground cursor-pointer transition-colors">
             <div className="flex items-center gap-2.5">
               <Mail className="size-4" />
               <span>Liên hệ</span>
             </div>
-            <Badge variant="destructive" className="h-4 px-1.5 text-[10px] leading-none">
+            <Badge
+              variant="destructive"
+              className="h-4 px-1.5 text-[10px] leading-none"
+            >
               0
             </Badge>
           </div>
@@ -150,10 +166,10 @@ const AdminLayout = () => {
         </div>
       </aside>
       {/* 2. KHU VỰC NỘI DUNG CHÍNH */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
         <header className="h-16 bg-card border-b border-border flex items-center justify-between px-6 shrink-0">
           <span className="text-xs font-medium text-muted-foreground">
-            Hệ thống Quản trị / Quản lý người dùng
+            Hệ thống Quản trị / {location.pathname.includes("categories") ? "Quản lý danh mục" : "Quản lý người dùng"}
           </span>
           <div className="flex items-center gap-2">
             <div className="size-8 rounded-full bg-primary/10 text-primary font-bold text-xs flex items-center justify-center">
@@ -164,7 +180,7 @@ const AdminLayout = () => {
             </span>
           </div>
         </header>
-        <main className="flex-1 p-6 overflow-y-auto">
+        <main className="flex-1 p-6 overflow-hidden flex flex-col min-h-8">
           <Outlet />
         </main>
       </div>

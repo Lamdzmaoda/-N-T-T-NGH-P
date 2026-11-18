@@ -15,6 +15,7 @@ import org.example.backend.enums.WalletType;
 import org.example.backend.service.wallet.WalletService;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+
 import java.util.List;
 
 @RestController
@@ -45,6 +46,7 @@ public class WalletController {
                 .result(walletService.getMyWallets())
                 .build();
     }
+
     @GetMapping("/{type}/my-wallets")
     @Operation(summary = "Lấy danh sách ví", description = "Lấy ví theo loại ví")
     public ApiResponse<List<WalletResponse>> getMyWalletsByType(WalletType type) {
@@ -89,12 +91,22 @@ public class WalletController {
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Xóa ví (Xóa mềm)", description = "Đánh dấu ngừng hoạt động ví, bảo toàn lịch sử các giao dịch cũ")
-    public ApiResponse<String> deleteWallet(@PathVariable String id) {
+    public ApiResponse<Void> deleteWallet(@PathVariable String id) {
         walletService.deleteWallet(id);
-        return ApiResponse.<String>builder()
-                .code(HttpStatus.OK.value())
-                .message("Xóa ví thành công")
-                .result("Ví đã được xóa thành công")
+        return ApiResponse.<Void>builder()
                 .build();
+    }
+
+    @PatchMapping("/{id}")
+    @Operation(summary = "Khôi phục ví", description = "Khôi phục lại ví")
+    public ApiResponse<Void> restoreWallet(@PathVariable String id) {
+        walletService.restoreWallet(id);
+        return ApiResponse.<Void>builder().build();
+    }
+    @DeleteMapping("/trash/{id}")
+    @Operation(summary = "Xóa vĩnh viễn ví khỏi thùng rác")
+    public ApiResponse<Void> permanentDeleteWallet(@PathVariable String id) {
+        walletService.permanentDeleteWallet(id);
+        return ApiResponse.<Void>builder().build();
     }
 }

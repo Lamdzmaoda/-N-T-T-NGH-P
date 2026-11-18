@@ -29,13 +29,14 @@ import javax.crypto.spec.SecretKeySpec;
 @EnableMethodSecurity
 public class SecurityConfig {
     private final String[] PUBLIC_ENDPOINTS = {
-            "/users","/auth/token","/auth/introspect","/auth/logout","/auth/refresh"
+            "/users","/auth/token","/auth/introspect","/auth/logout","/auth/refresh", "/auth/outbound/**"
     };
     private final String[] PUBLIC_GET_ENDPOINTS = {
             "/swagger-ui.html",
             "/swagger-ui/**",
             "/v3/api-docs/**",
-            "/api-docs/**"
+            "/api-docs/**",
+
     };
     @Value("${jwt.signerKey}")
     private String jwtSignerKey;
@@ -52,7 +53,6 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, PUBLIC_ENDPOINTS).permitAll()
                 .requestMatchers(HttpMethod.GET, PUBLIC_GET_ENDPOINTS).permitAll()
                 .anyRequest().authenticated());
-
         http.oauth2ResourceServer(oauth2 -> oauth2
                 .bearerTokenResolver(request -> {
                     String authHeader = request.getHeader("Authorization");
@@ -86,7 +86,6 @@ public class SecurityConfig {
     @Bean
     JwtDecoder jwtDecoder() {
         SecretKeySpec secretKey = new SecretKeySpec(jwtSignerKey.getBytes(), "HS512");
-
         return NimbusJwtDecoder.withSecretKey(secretKey)
                 .macAlgorithm(MacAlgorithm.HS512)
                 .build();

@@ -1,5 +1,6 @@
 package org.example.backend.controller.transaction;
 
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -73,6 +74,27 @@ public class TransactionController {
         transactionService.deleteTransaction(transactionId);
         return ApiResponse.<Void>builder()
                 .message("Xóa giao dịch và hoàn trả số dư thành công")
+                .build();
+    }
+    @GetMapping("/trash")
+    @Operation(summary = "Lấy danh sách giao dịch trong thùng rác")
+    public ApiResponse<List<TransactionResponse>> getTrashTransactions() {
+        return ApiResponse.<List<TransactionResponse>>builder()
+                .result(transactionService.getTrashTransactions())
+                .build();
+    }
+    @PutMapping("/trash/{id}/restore")
+    @Operation(summary = "Khôi phục giao dịch từ thùng rác")
+    public ApiResponse<TransactionResponse> restoreTransaction(@PathVariable String id) {
+        return ApiResponse.<TransactionResponse>builder()
+                .result(transactionService.restoreTransaction(id))
+                .build();
+    }
+    @DeleteMapping("/trash/{id}")
+    @Operation(summary = "Xóa vĩnh viễn giao dịch khỏi thùng rác")
+    public ApiResponse<Void> permanentDeleteTransaction(@PathVariable String id) {
+        transactionService.permanentDeleteTransaction(id);
+        return ApiResponse.<Void>builder()
                 .build();
     }
 }

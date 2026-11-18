@@ -36,8 +36,10 @@ public class Category {
     String icon;
 
     String color;
-
     @Builder.Default
     Boolean isDefault = false;
+
+    @Builder.Default
+    Boolean isActive = true;
 
 }
