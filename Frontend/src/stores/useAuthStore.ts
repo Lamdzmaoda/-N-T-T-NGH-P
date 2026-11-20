@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { authService } from "@/services/authService";
 import type { AuthState } from "@/types/store";
 import { getErrorMessage } from "@/lib/errorHandler";
-import { email } from "zod";
+import type { UserUpdateRequest } from "@/types/User";
 
 export const useAuthStore = create<AuthState>((set, get) => ({
   token: null,
@@ -120,26 +120,30 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ loading: false });
     }
   },
-  verifyOtp: async (email: string ,otp : string) => {
+  verifyOtp: async (email: string, otp: string) => {
     try {
-      set({loading: true})
+      set({ loading: true });
       const res = await authService.verifyOtp(email, otp);
       const token = res.result?.accessToken || res.result?.token;
 
-      if(token){
+      if (token) {
         get().setAccessToken(token);
         await get().fetchMe();
-        toast.success("Kích hoạt tài khoản thành công! Đang chuyển đến Dashboard...");
+        toast.success(
+          "Kích hoạt tài khoản thành công! Đang chuyển đến Dashboard...",
+        );
       }
     } catch (error) {
       console.error("Lỗi xác thực OTP:", error);
-      toast.error(getErrorMessage(error, "Mã OTP không chính xác hoặc đã hết hạn"));
+      toast.error(
+        getErrorMessage(error, "Mã OTP không chính xác hoặc đã hết hạn"),
+      );
       throw error;
     } finally {
       set({ loading: false });
     }
   },
-  resendOtp: async(email: string) => {
+  resendOtp: async (email: string) => {
     try {
       await authService.resendOtp(email);
       toast.success("Đã gửi mã OTP mới tới email của bạn!");
@@ -148,6 +152,48 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       toast.error(getErrorMessage(error, "Không thể gửi lại mã OTP"));
       throw error;
     }
-    }
+  },
+  updateProfile: async (data: UserUpdateRequest) => {
+    const currentUser = get().user;
+    if (!currentUser?.id) return;
 
+    try {
+      set({ loading: true });
+      const res = await authService.updateProfile(currentUser.id, data);
+      const updatedUser = res.result;
+
+      if (updatedUser) {
+        set((state) => ({
+          user: state.user ? { ...state.user, ...updatedUser } : updatedUser,
+        }));
+        toast.success("Lưu thông tin cá nhân thành công!");
+      }
+    } catch (error) {
+      console.error("Lỗi cập nhật profile:", error);
+      toast.error(getErrorMessage(error, "Cập nhật thông tin thất bại"));
+      throw error;
+    } finally {
+      set({ loading: false });
+    }
+  },
+  uploadAvatar: async(file: File) => {
+    try {
+      set({loading: true});
+      const res = await authService.uploadAvatar(file);
+      const updatedUser = res.result;
+
+      if(updatedUser){
+        set((state) => ({
+          user: state.user ? {...state.user, avatarUrl: updatedUser.avatarUrl} : updatedUser
+        }));
+        toast.success("Cập nhật ảnh đại diện thành công!");
+      }
+    } catch (error) {
+      console.error("Lỗi upload avatar:", error);
+      toast.error(getErrorMessage(error, "Không thể tải ảnh đại diện lên"));
+      throw error;
+    } finally {
+      set({ loading: false });
+    }
+  }
 }));

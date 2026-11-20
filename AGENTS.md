@@ -29,3 +29,10 @@
   - Chỉ khi đã làm rõ các bước chuẩn bị làm thì mới đi vào chi tiết từng file, số dòng và code mẫu copy-pasteable.
   - Tuyệt đối không bỏ qua bước giải thích kế hoạch hành động.
 
+## 6. Frontend Form Validation Standard (Strict Zod Requirement)
+- **100% Zod Validation**: Mọi form nhập liệu trong Frontend (Profile, Auth, Transaction, Wallet, Category, Budget,...) bắt buộc phải sử dụng **Zod Schema** kết hợp với **React Hook Form** (`@hookform/resolvers/zod`).
+- **Nghiêm cấm Validate thủ công**: Tuyệt đối không dùng các câu lệnh `if/else` thủ công rời rạc để kiểm tra dữ liệu form trong hàm submit.
+- **Type-safe qua Zod**: Dùng `z.infer<typeof formSchema>` để định nghĩa kiểu dữ liệu form.
+- **Hiển thị lỗi trường (Field Errors)**: Luôn hiển thị thông báo lỗi dưới từng ô input bằng semantic color token `text-destructive`.
+
+

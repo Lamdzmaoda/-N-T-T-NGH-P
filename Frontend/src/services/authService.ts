@@ -1,4 +1,6 @@
 import api from "@/lib/axios";
+import type { ApiResponse } from "@/types/api";
+import type { ChangePasswordRequest, User, UserUpdateRequest } from "@/types/User";
 
 export const authService = {
   signUp: async (
@@ -59,4 +61,25 @@ export const authService = {
     );
     return res.data;
   },
+  updateProfile: async (userId: string, data: UserUpdateRequest) : Promise<ApiResponse<User>> =>
+  {
+    const res = await api.put(`/users/${userId}`, data);
+    return res.data;
+  },
+  uploadAvatar: async(file: File): Promise<ApiResponse<User>> => {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const res = await api.post("/users/avatar", formData, {
+      headers: {
+        "Content-Type" : "multipart/form-data",
+      },
+      withCredentials: true,
+    });
+    return res.data;
+  },
+  changePassword: async (data: ChangePasswordRequest) : Promise<ApiResponse<void>> => {
+    const res = await api.put("/users/changePassword", data);
+    return res.data;
+  }
 };

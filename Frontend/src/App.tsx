@@ -8,6 +8,7 @@ import AdminUserListPage from "./pages/Admin/AdminUserListPage";
 import AdminLayout from "./components/admin/layout/AdminLayout";
 import AdminCategoryListPage from "./pages/Admin/AdminCategoryListPage";
 import OAuth2CallbackPage from "./pages/auth/OAuth2CallbackPage";
+import ProfilePage from "./pages/User/ProfilePage";
 function App() {
   return (
     <>
@@ -24,6 +25,7 @@ function App() {
           {/* private routes */}
           <Route element={<ProtectedRoute />}>
               <Route path="/" element={<HomePage />} />
+              <Route path="/profile" element={<ProfilePage />} />
               <Route path="/admin" element={<AdminLayout />}>
                 <Route index element={<Navigate to="/admin/users" replace />} />
                 <Route path="users" element={<AdminUserListPage />} />

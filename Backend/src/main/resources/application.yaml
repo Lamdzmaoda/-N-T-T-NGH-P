@@ -51,6 +51,17 @@ spring:
           auth: true
           starttls:
             enable: true
+  # ==================== UPLOAD LIMIT ====================
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+# ==================== EXTERNAL APIs ====================
+cloudinary:
+  cloud-name: ${CLOUDINARY_CLOUD_NAME:dien_cloud_name_cua_ban_vao_day}
+  api-key: ${CLOUDINARY_API_KEY:dien_api_key_cua_ban_vao_day}
+  api-secret: ${CLOUDINARY_API_SECRET:dien_api_secret_cua_ban_vao_day}
 
 # ==================== SERVER ====================
 server:
@@ -69,8 +80,6 @@ cors:
   allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:5174,https://travelai.id.vn,https://www.travelai.id.vn}
 
 # ==================== EXTERNAL APIs ====================
-cloudinary:
-
 
 
 

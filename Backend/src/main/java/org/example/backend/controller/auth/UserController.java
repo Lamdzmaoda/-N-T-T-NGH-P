@@ -16,6 +16,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -83,12 +84,6 @@ public class UserController {
         userService.deleteUser(userId);
     }
 
-    @PostMapping("/avatar")
-    public ApiResponse<UserResponse> uploadAvatar(@RequestParam("file") MultipartFile file) {
-        ApiResponse<UserResponse> apiResponse = new ApiResponse<>();
-        apiResponse.setResult(userService.uploadAvatar(file));
-        return apiResponse;
-    }
 
     @PutMapping("/{userId}/toggle-status")
     public ApiResponse<UserResponse> toggleUserStatus(@PathVariable("userId") String userId) {
@@ -96,7 +91,12 @@ public class UserController {
                 .result(userService.toggleUserStatus(userId))
                 .build();
     }
-
+    @PostMapping(value = "/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<UserResponse> uploadAvatar(@RequestParam("file") MultipartFile file){
+       return ApiResponse.<UserResponse>builder()
+               .result(userService.uploadAvatar(file))
+               .build();
+    }
     @GetMapping("/admin/list")
     public ApiResponse<Page<UserResponse>> getUsersForAdmin(
             @RequestParam(required = false) String keyword,

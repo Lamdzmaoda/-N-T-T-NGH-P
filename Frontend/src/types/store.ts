@@ -4,7 +4,7 @@ import type { BudgetProgressResponse, BudgetRequest } from "./budget";
 import type { Category } from "./category";
 import type { NotificationResponse } from "./notification";
 import type { Transaction, TransactionRequest, TransferRequest } from "./transaction";
-import type { AdminUserFilterParams, PageResponse, User } from "./User";
+import type { AdminUserFilterParams, PageResponse, User, UserUpdateRequest } from "./User";
 import type { TotalBalanceResponse, Wallet } from "./wallet";
 
 export interface AuthState {
@@ -34,6 +34,8 @@ export interface AuthState {
   loginWithGoogle: (code: string) => Promise<void>;
   verifyOtp: (email: string, otp: string) => Promise<void>;
   resendOtp: (email: string) => Promise<void>;
+  uploadAvatar: (file: File) => Promise<void>;
+  updateProfile: (data: UserUpdateRequest) => Promise<void>;
 }
 export interface AdminUserState {
   userPage: PageResponse<User> | null;

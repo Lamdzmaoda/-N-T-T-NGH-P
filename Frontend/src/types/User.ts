@@ -39,3 +39,14 @@ export interface AdminUserFilterParams{
   page?: number;
   size?: number;
 }
+export interface UserUpdateRequest {
+  full_name: string;
+  phone: string;
+  dob?: string;
+  bio?: string;
+}
+export interface ChangePasswordRequest {
+  oldPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}

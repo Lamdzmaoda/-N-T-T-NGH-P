@@ -22,6 +22,7 @@ import org.example.backend.repository.auth.EmailVerificationRepository;
 import org.example.backend.repository.auth.RoleRepository;
 import org.example.backend.repository.auth.UserRepository;
 import org.example.backend.service.email.EmailService;
+import org.example.backend.service.upload.CloudinaryService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PostAuthorize;
@@ -51,6 +52,7 @@ public class UserService {
     PasswordEncoder passwordEncoder;
     EmailService emailService;
     EmailVerificationRepository emailVerificationRepository;
+    CloudinaryService cloudinaryService;
 
     private final AuthenticationService authenticationService;
 
@@ -125,15 +127,29 @@ public class UserService {
         if(profileUser == null){
             profileUser = ProfileUser.builder().user(user).build();
         }
-        if(request.getAvatarUrl() != null){
-            profileUser.setAvatar_url(request.getAvatarUrl());
-        }
         if(request.getBio() != null){
             profileUser.setBio(request.getBio());
         }
         user.setProfile(profileUser);
         return userMapper.toUserResponse(userRepository.save(user));
     }
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
+    public UserResponse uploadAvatar(MultipartFile file) {
+        User user = authenticationService.getUserByContext();
+
+        String publicId = "avatar_" + user.getId();
+        String avatarUrl = cloudinaryService.uploadFile(file, "avatars", publicId);
+
+        ProfileUser profile = user.getProfile();
+        if(profile == null){
+            profile = ProfileUser.builder().user(user).build();
+        }
+        profile.setAvatar_url(avatarUrl);
+        user.setProfile(profile);
+
+        return userMapper.toUserResponse(userRepository.save(user));
+    }
+
     @PostAuthorize("returnObject.username == authentication.name")
     public void updatePassword(ChangePasswordRequest request){
         var user = authenticationService.getUserByContext();
@@ -160,25 +176,6 @@ public class UserService {
         userRepository.save(user);
     }
 
-    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
-    public UserResponse uploadAvatar(MultipartFile file) {
-        var context = SecurityContextHolder.getContext();
-        String name = context.getAuthentication().getName();
-
-        User user = userRepository.findByUsername(name)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
-
-
-        ProfileUser profileUser = user.getProfile();
-        if (profileUser == null) {
-            profileUser = ProfileUser.builder()
-                    .user(user)
-                    .build();
-        }
-        user.setProfile(profileUser);
-
-        return userMapper.toUserResponse(userRepository.save(user));
-    }
     @PreAuthorize("hasRole('ADMIN')")
     public UserResponse toggleUserStatus(String userId){
         User user = userRepository.findById(userId).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
