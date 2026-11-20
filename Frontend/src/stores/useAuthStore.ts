@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { authService } from "@/services/authService";
 import type { AuthState } from "@/types/store";
 import { getErrorMessage } from "@/lib/errorHandler";
+import { email } from "zod";
 
 export const useAuthStore = create<AuthState>((set, get) => ({
   token: null,
@@ -119,4 +120,34 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ loading: false });
     }
   },
+  verifyOtp: async (email: string ,otp : string) => {
+    try {
+      set({loading: true})
+      const res = await authService.verifyOtp(email, otp);
+      const token = res.result?.accessToken || res.result?.token;
+
+      if(token){
+        get().setAccessToken(token);
+        await get().fetchMe();
+        toast.success("Kích hoạt tài khoản thành công! Đang chuyển đến Dashboard...");
+      }
+    } catch (error) {
+      console.error("Lỗi xác thực OTP:", error);
+      toast.error(getErrorMessage(error, "Mã OTP không chính xác hoặc đã hết hạn"));
+      throw error;
+    } finally {
+      set({ loading: false });
+    }
+  },
+  resendOtp: async(email: string) => {
+    try {
+      await authService.resendOtp(email);
+      toast.success("Đã gửi mã OTP mới tới email của bạn!");
+    } catch (error) {
+      console.error("Lỗi gửi lại OTP:", error);
+      toast.error(getErrorMessage(error, "Không thể gửi lại mã OTP"));
+      throw error;
+    }
+    }
+
 }));

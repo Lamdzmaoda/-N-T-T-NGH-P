@@ -42,5 +42,21 @@ export const authService = {
         withCredentials: true }
     );
     return res.data;
-  }
+  },
+  verifyOtp: async (email: string, otp: string) => {
+    const res = await api.post(
+      "/auth/verify-otp",
+      { email, otp },
+      { withCredentials: true }
+    );
+    return res.data;
+  },
+  resendOtp: async (email: string) => {
+    const res = await api.post(
+      "/auth/resend-otp",
+      { email },
+      { withCredentials: true }
+    );
+    return res.data;
+  },
 };

@@ -13,23 +13,23 @@ import lombok.experimental.NonFinal;
 import lombok.extern.slf4j.Slf4j;
 import org.example.backend.client.GoogleIdentityClient;
 import org.example.backend.constrant.PredefinedRole;
-import org.example.backend.dto.request.auth.AuthenticationRequest;
-import org.example.backend.dto.request.auth.IntrospectRequest;
-import org.example.backend.dto.request.auth.LogoutRequest;
-import org.example.backend.dto.request.auth.RefreshRequest;
+import org.example.backend.dto.request.auth.*;
 import org.example.backend.dto.response.auth.AuthenticationResponse;
 import org.example.backend.dto.response.auth.IntrospectResponse;
 import org.example.backend.entity.RBAC.Role;
+import org.example.backend.entity.User.EmailVerification;
 import org.example.backend.entity.User.InvalidatedToken;
 import org.example.backend.entity.User.ProfileUser;
 import org.example.backend.entity.User.User;
 
 import org.example.backend.exception.AppException;
 import org.example.backend.exception.ErrorCode;
+import org.example.backend.repository.auth.EmailVerificationRepository;
 import org.example.backend.repository.auth.InvalidatedTokenRepository;
 import org.example.backend.repository.auth.RoleRepository;
 import org.example.backend.repository.auth.UserRepository;
 
+import org.example.backend.service.email.EmailService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -40,6 +40,7 @@ import org.springframework.util.CollectionUtils;
 
 import java.text.ParseException;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 
@@ -62,15 +63,26 @@ public class AuthenticationService {
     protected long REFRESHABLE_DURATION;
     GoogleIdentityClient googleIdentityClient;
     RoleRepository roleRepository;
+    EmailVerificationRepository emailVerificationRepository;
+    EmailService emailService;
     @Transactional
     public AuthenticationResponse authenticate(AuthenticationRequest authenticationRequest) {
-        var user = userRepository.findByUsername(authenticationRequest.getUsername())
+        String identifier = authenticationRequest.getUsername();
+        var user = userRepository.findByUsername(identifier).or(() -> userRepository.findByEmail(identifier))
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
         PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(10);
 
         boolean authenticated = passwordEncoder.matches(authenticationRequest.getPassword(), user.getPassword());
         if (!authenticated) {
             throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+        if (Boolean.FALSE.equals(user.getIsEmailVerified())) {
+            try{
+                resendOtp(user.getEmail());
+            }catch (Exception e){
+                log.error("Lỗi khi tự động gửi OTP lúc đăng nhập: {}", e.getMessage());
+            }
+            throw new AppException(ErrorCode.EMAIL_NOT_VERIFIED, user.getEmail());
         }
         Date expiryTime = new Date(Instant.now().plus(REFRESHABLE_DURATION, ChronoUnit.SECONDS).toEpochMilli());
         var token = generateAccessToken(user);
@@ -210,6 +222,49 @@ public class AuthenticationService {
             log.error("Không thể giải mã User ID từ JWT: {}", e.getMessage());
             throw new AppException(ErrorCode.UNAUTHENTICATED);
         }
+    }
+
+    @Transactional
+    public AuthenticationResponse verifyEmailOtp(VerifyOtpRequest request){
+        EmailVerification verification = emailVerificationRepository.findByEmailAndOtpAndIsUsedFalseAndExpiryTimeAfter(
+                request.getEmail(),request.getOtp(), LocalDateTime.now()
+        ).orElseThrow(() -> new AppException(ErrorCode.INVALID_OTP));
+
+        verification.setUsed(true);
+        emailVerificationRepository.save(verification);
+
+        User user = userRepository.findByEmail(request.getEmail()).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+
+        user.setIsEmailVerified(true);
+        userRepository.save(user);
+
+        Date expiryTime = new Date(Instant.now().plus(REFRESHABLE_DURATION, ChronoUnit.SECONDS).toEpochMilli());
+        var token = generateAccessToken(user);
+        var refreshToken = generateRefreshToken(user, expiryTime);
+
+        return AuthenticationResponse.builder()
+                .accessToken(token)
+                .refreshToken(refreshToken)
+                .authenticated(true)
+                .build();
+    }
+    public void resendOtp(String email){
+        User user =userRepository.findByEmail(email).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+
+        if(Boolean.TRUE.equals(user.getIsEmailVerified())){
+            throw new AppException(ErrorCode.USER_EXISTED);
+        }
+
+        String otp = String.format("%06d", new java.util.Random().nextInt(999999));
+        EmailVerification verification = EmailVerification.builder()
+                .email(email)
+                .otp(otp)
+                .expiryTime(LocalDateTime.now().plusMinutes(5))
+                .createdAt(LocalDateTime.now())
+                .isUsed(false)
+                .build();
+        emailVerificationRepository.save(verification);
+        emailService.sendOtpEmail(email, otp);
     }
 
     private String signToken(JWTClaimsSet jwtClaimsSet) {

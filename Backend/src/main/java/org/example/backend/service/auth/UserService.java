@@ -12,13 +12,16 @@ import org.example.backend.dto.request.auth.UserUpdateRequest;
 import org.example.backend.dto.response.auth.AuthenticationResponse;
 import org.example.backend.dto.response.auth.UserResponse;
 import org.example.backend.entity.RBAC.Role;
+import org.example.backend.entity.User.EmailVerification;
 import org.example.backend.entity.User.ProfileUser;
 import org.example.backend.entity.User.User;
 import org.example.backend.exception.AppException;
 import org.example.backend.exception.ErrorCode;
 import org.example.backend.mapper.auth.UserMapper;
+import org.example.backend.repository.auth.EmailVerificationRepository;
 import org.example.backend.repository.auth.RoleRepository;
 import org.example.backend.repository.auth.UserRepository;
+import org.example.backend.service.email.EmailService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PostAuthorize;
@@ -35,10 +38,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
-import java.util.Date;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Locale;
+import java.util.*;
 
 @Service // Đánh dấu là tầng Service, nơi xử lý logic nghiệp vụ
 @RequiredArgsConstructor // Tự động Inject các Repository, Mapper, Encoder qua Constructor
@@ -49,7 +49,8 @@ public class UserService {
     UserMapper userMapper;
     RoleRepository roleRepository;
     PasswordEncoder passwordEncoder;
-
+    EmailService emailService;
+    EmailVerificationRepository emailVerificationRepository;
 
     private final AuthenticationService authenticationService;
 
@@ -58,7 +59,9 @@ public class UserService {
         if(userRepository.existsByUsername(userRequest.getUsername())){
             throw new AppException(ErrorCode.USER_EXISTED);
         }
-
+        if (userRepository.existsByEmail(userRequest.getEmail())) {
+            throw new AppException(ErrorCode.EMAIL_EXISTED);
+        }
         User user = userMapper.toUser(userRequest);
         user.setPassword(passwordEncoder.encode(user.getPassword()));
 
@@ -78,6 +81,19 @@ public class UserService {
 
         // ✅ Lưu lại lần nữa để cascade ProfileUser lưu vào database
         user = userRepository.save(user);
+
+        String otp = String.format("%06d", new Random().nextInt(999999));
+        EmailVerification verification = EmailVerification.builder()
+                .email(user.getEmail())
+                .otp(otp)
+                .expiryTime(LocalDateTime.now().plusMinutes(60))
+                .createdAt(LocalDateTime.now())
+                .isUsed(false)
+                .build();
+
+        emailVerificationRepository.save(verification);
+
+        emailService.sendOtpEmail(user.getEmail(), otp);
 
         return userMapper.toUserResponse(user);
     }

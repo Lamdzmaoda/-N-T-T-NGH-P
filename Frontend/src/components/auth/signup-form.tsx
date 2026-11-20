@@ -25,6 +25,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useNavigate } from "react-router";
 import { useState } from "react";
+import OtpVerificationView from "./OtpVerificationView";
 
 const signUpSchema = z
   .object({
@@ -59,6 +60,7 @@ export function SignupForm({
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [pendingEmail, setPendingEmail] = useState<string | null>(null);
 
   const {
     register,
@@ -75,7 +77,7 @@ export function SignupForm({
     try {
       const { full_name, username, email, phone, password } = data;
       await signUp(username, password, email, phone, full_name);
-      navigate("/signin");
+      setPendingEmail(email)
     } catch (error) {
       console.error(error);
     }
@@ -94,6 +96,17 @@ export function SignupForm({
       prompt: "consent",
     });
     window.location.href = `${rootUrl}?${params.toString()}`;
+  }
+  if (pendingEmail) {
+    return (
+      <div className={cn("w-full max-w-5xl mx-auto flex items-center justify-center", className)} {...props}>
+        <OtpVerificationView
+          email={pendingEmail}
+          onSuccess={() => navigate("/")}
+          onBack={() => setPendingEmail(null)}
+        />
+      </div>
+    );
   }
 
   return (

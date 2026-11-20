@@ -38,5 +38,8 @@ export const ERROR_MESSAGES: Record<number, string> = {
   1027: "Ví chuyển và ví nhận tiền không được trùng nhau",
   1028: "Vui lòng chọn danh mục cho giao dịch",
   1029: "Loại giao dịch không hợp lệ",
+  1033: "Mã OTP không chính xác hoặc đã hết hạn",
+  1034: "Tài khoản chưa được kích hoạt qua email. Vui lòng xác thực mã OTP!",
+  1035: "Email này đã được sử dụng trong hệ thống",
   9999: "Lỗi hệ thống! Vui lòng thử lại sau",
 };

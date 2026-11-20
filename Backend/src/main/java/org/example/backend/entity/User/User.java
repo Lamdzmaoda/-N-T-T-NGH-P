@@ -27,7 +27,7 @@ public class User {
     @Column( unique = true)
     String username;
     @Email
-    @Column(nullable = false)
+    @Column(nullable = false, unique = true)
     String email;
     String password;
     String phone;
@@ -48,4 +48,6 @@ public class User {
     LocalDateTime update_at;
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     ProfileUser profile;
+    @Builder.Default
+    Boolean isEmailVerified = false;
 }

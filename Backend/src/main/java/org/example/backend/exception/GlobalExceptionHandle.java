@@ -38,9 +38,10 @@ public class GlobalExceptionHandle {
     public ResponseEntity<ApiResponse> handlingRAppException(AppException ex)
     {
         ErrorCode errorCode = ex.getErrorCode();
-        ApiResponse<UserResponse> apiResponse = new ApiResponse<>();
+        ApiResponse<Object> apiResponse = new ApiResponse<>();
         apiResponse.setCode(errorCode.getCode());
         apiResponse.setMessage(errorCode.getMessage());
+        apiResponse.setResult(ex.getData());
         return ResponseEntity.status(errorCode.getStatusCode()).body(apiResponse);
     }
     @ExceptionHandler(value = AuthorizationDeniedException.class)

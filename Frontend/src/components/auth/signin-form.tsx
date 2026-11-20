@@ -21,6 +21,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useNavigate } from "react-router";
 import { useState } from "react";
+import OtpVerificationView from "./OtpVerificationView";
 
 // Schema validate form đăng nhập
 const signInSchema = z.object({
@@ -39,6 +40,7 @@ export function SigninForm({
 }: React.ComponentProps<"div">) {
   const { signIn } = useAuthStore();
   const [showPassword, setShowPassword] = useState(false);
+  const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const {
@@ -57,8 +59,16 @@ export function SigninForm({
       const { username_or_email, password } = data;
       await signIn(username_or_email, password);
       navigate("/");
-    } catch (error) {
+    } catch (error : any) {
       console.error(error);
+      const resData = error?.response?.data;
+
+      if(resData?.code === 1034){
+        const targetEmail = resData?.result || (data.username_or_email.includes("@") ? data.username_or_email : "");
+        if(targetEmail){
+          setUnverifiedEmail(targetEmail);
+        }
+      }
     }
   };
 
@@ -75,9 +85,19 @@ export function SigninForm({
       access_type: "offline",
       prompt: "consent",
     });
-
     window.location.href = `${rootUrl}?${params.toString()}`;
   }
+  if(unverifiedEmail){
+      return(
+         <div className={cn("w-full max-w-md mx-auto", className)} {...props}>
+        <OtpVerificationView
+          email={unverifiedEmail}
+          onSuccess={() => navigate("/")}
+          onBack={() => setUnverifiedEmail(null)}
+        />
+      </div>
+      )
+    }
 
   return (
     <div className={cn("w-full max-w-5xl mx-auto", className)} {...props}>

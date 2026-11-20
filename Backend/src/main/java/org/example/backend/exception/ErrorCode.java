@@ -50,7 +50,10 @@ public enum ErrorCode {
     INVALID_TRANSACTION_TYPE(1029, "Transcaction type invalid", HttpStatus.BAD_REQUEST),
     // Ngân sách (Budget)
     BUDGET_ALREADY_EXISTS(1030, "Budget for this category in the month already exists", HttpStatus.BAD_REQUEST),
-    BUDGET_NOT_FOUND(1031, "Budget not found", HttpStatus.NOT_FOUND)
+    BUDGET_NOT_FOUND(1031, "Budget not found", HttpStatus.NOT_FOUND),
+    INVALID_OTP(1033, "Mã OTP không chính xác hoặc đã hết hạn", HttpStatus.BAD_REQUEST),
+    EMAIL_NOT_VERIFIED(1034, "Tài khoản chưa được kích hoạt qua email. Vui lòng xác thực mã OTP!", HttpStatus.FORBIDDEN),
+    EMAIL_EXISTED(1035, "Email này đã được sử dụng trong hệ thống", HttpStatus.BAD_REQUEST),
     ;
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {

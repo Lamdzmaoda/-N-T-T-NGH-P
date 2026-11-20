@@ -128,4 +128,30 @@ public class AuthenticationController {
                 .result(result)
                 .build();
     }
+    @PostMapping("/verify-otp")
+    public ApiResponse<AuthenticationResponse> verifyOtp(
+            @RequestBody @jakarta.validation.Valid org.example.backend.dto.request.auth.VerifyOtpRequest request,
+            HttpServletResponse response) {
+        var result = authenticationService.verifyEmailOtp(request);
+
+        Cookie refreshCookie = new Cookie("refreshToken", result.getRefreshToken());
+        refreshCookie.setHttpOnly(true);
+        refreshCookie.setSecure(false);
+        refreshCookie.setPath("/");
+        refreshCookie.setMaxAge(7 * 24 * 3600);
+        response.addCookie(refreshCookie);
+
+        return ApiResponse.<AuthenticationResponse>builder()
+                .result(result)
+                .build();
+    }
+
+    @PostMapping("/resend-otp")
+    public ApiResponse<String> resendOtp(
+            @RequestBody @jakarta.validation.Valid org.example.backend.dto.request.auth.ResendOtpRequest request) {
+        authenticationService.resendOtp(request.getEmail());
+        return ApiResponse.<String>builder()
+                .result("Mã OTP mới đã được gửi tới email của bạn")
+                .build();
+    }
 }

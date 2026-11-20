@@ -442,25 +442,29 @@ def generate_report():
 
     add_heading_2("3.3. Thiết kế Cơ sở dữ liệu (Database Schema - ERD)")
     doc.add_paragraph(
-        "Cơ sở dữ liệu của hệ thống được chuẩn hóa ở dạng chuẩn 3NF (Third Normal Form) gồm 10 bảng cốt lõi:"
+        "Cơ sở dữ liệu của hệ thống được chuẩn hóa ở dạng chuẩn 3NF (Third Normal Form) gồm 15 bảng phân chia theo 4 phân hệ chính:"
     )
 
-    tbl_list_headers = ["Tên Bảng (Table)", "Khóa Chính (PK)", "Mô Tả Vai Trò Nghiệp Vụ"]
+    tbl_list_headers = ["STT", "Tên Bảng (Table)", "Khóa Chính (PK)", "Loại Khóa", "Mô Tả Vai Trò Nghiệp Vụ"]
     tbl_list_data = [
-        ["users", "id (UUID)", "Lưu trữ thông tin tài khoản đăng nhập, email, mật khẩu BCrypt."],
-        ["profile_user", "id (UUID)", "Lưu thông tin bổ trợ: họ tên, ngày sinh, số điện thoại, avatar."],
-        ["roles", "name (VARCHAR)", "Định nghĩa vai trò người dùng (USER, ADMIN)."],
-        ["permissions", "name (VARCHAR)", "Định nghĩa quyền chi tiết (CREATE_TRANSACTION, MANAGE_WALLET...)."],
-        ["wallets", "id (UUID)", "Quản lý các nguồn tiền: Tiền mặt, Ngân hàng, Ví MoMo, Thẻ tín dụng."],
-        ["categories", "id (UUID)", "Phân loại thu/chi (Ăn uống, Tiền lương, Di chuyển, Mua sắm...)."],
-        ["transactions", "id (UUID)", "Sổ cái lưu trữ mọi biến động thu/chi/chuyển khoản và số dư tức thời."],
-        ["budgets", "id (UUID)", "Lưu trữ hạn mức chi tiêu theo tháng cho từng danh mục."],
-        ["debt_loans", "id (UUID)", "Sổ theo dõi nợ (DEBT) hoặc cho vay (LOAN) kèm đối soát P2P."],
-        ["debt_repayments", "id (UUID)", "Lịch sử các đợt thanh toán nợ từng phần."],
-        ["invalidated_tokens", "id (UUID)", "Danh sách đen lưu các Token đã bị thu hồi hoặc đã đăng xuất."]
+        ["1", "user", "id", "VARCHAR(36) UUID", "Lưu trữ tài khoản người dùng, email, username, mật khẩu mã hóa BCrypt, trạng thái hoạt động (is_active), provider (NORMAL/GOOGLE), cờ xác thực email."],
+        ["2", "profile_user", "id", "VARCHAR(36) UUID", "Hồ sơ mở rộng của người dùng: avatar_url, bio, thời gian tạo/cập nhật. Quan hệ 1 - 1 với bảng user."],
+        ["3", "role", "name", "VARCHAR(255) Tự nhiên", "Lưu danh mục vai trò người dùng trong hệ thống (ROLE_USER, ROLE_ADMIN)."],
+        ["4", "permission", "name", "VARCHAR(255) Tự nhiên", "Lưu danh mục quyền hạn chi tiết trong hệ thống (CREATE_TRANSACTION, MANAGE_USERS...)."],
+        ["5", "user_roles", "(user_id, roles_name)", "Composite Key", "Bảng trung gian thể hiện quan hệ N - N giữa user và role."],
+        ["6", "role_permissions", "(role_name, permissions_name)", "Composite Key", "Bảng trung gian thể hiện quan hệ N - N giữa role và permission."],
+        ["7", "email_verification", "id", "VARCHAR(36) UUID", "Lưu mã OTP 6 số, email nhận mã, thời gian hết hạn và trạng thái sử dụng phục vụ xác thực email."],
+        ["8", "invalidated_token", "id", "VARCHAR(255) Chuỗi JTI", "Danh sách đen (Blacklist) lưu Token ID (JTI) và thời điểm hết hạn khi đăng xuất hoặc xoay vòng Refresh Token."],
+        ["9", "wallet", "id", "VARCHAR(36) UUID", "Quản lý nguồn tiền/tài khoản (Tiền mặt, Ngân hàng, Ví điện tử...); số dư balance chuẩn DECIMAL(19,4), cờ include_in_total, xóa mềm."],
+        ["10", "categories", "id", "VARCHAR(36) UUID", "Phân loại thu/chi; phân loại EXPENSE/INCOME; phân biệt danh mục mặc định (is_default) và do người dùng tự tạo."],
+        ["11", "transactions", "id", "VARCHAR(36) UUID", "Sổ cái tài chính ghi nhận mọi giao dịch (Thu, Chi, Chuyển khoản); lưu balance_after đối soát, ảnh hóa đơn, hỗ trợ xóa mềm."],
+        ["12", "budgets", "id", "VARCHAR(36) UUID", "Lưu trữ hạn mức chi tiêu theo tháng cho từng danh mục; cờ chống spam cảnh báo mốc 80% và 100%."],
+        ["13", "debt_loans", "id", "VARCHAR(36) UUID", "Sổ theo dõi nợ (DEBT) hoặc cho vay (LOAN); quản lý số tiền gốc, số tiền còn lại, thông tin ngân hàng sinh mã VietQR, liên kết P2P."],
+        ["14", "debt_repayments", "id", "VARCHAR(36) UUID", "Lịch sử chi tiết các đợt thanh toán nợ từng phần/toàn phần cho từng khoản nợ."],
+        ["15", "notifications", "id", "VARCHAR(36) UUID", "Lưu trữ thông báo người dùng: Cảnh báo ngân sách, thông báo nợ P2P, biến động số dư. Đánh chỉ mục hỗn hợp truy vấn tốc độ cao."]
     ]
-    tbl_schema = doc.add_table(rows=len(tbl_list_data)+1, cols=3)
-    format_table(tbl_schema, [3.5, 3.0, 9.5], tbl_list_headers, tbl_list_data)
+    tbl_schema = doc.add_table(rows=len(tbl_list_data)+1, cols=5)
+    format_table(tbl_schema, [1.2, 3.0, 3.2, 2.8, 5.8], tbl_list_headers, tbl_list_data, {0: WD_ALIGN_PARAGRAPH.CENTER, 3: WD_ALIGN_PARAGRAPH.CENTER})
 
     add_heading_2("3.4. Từ điển Dữ liệu Chi tiết các Bảng Nghiệp vụ Cốt lõi")
     
@@ -702,8 +706,13 @@ def generate_report():
 
     # Save to workspace
     output_path = "BAO_CAO_DO_AN_TOT_NGHIEP_PFT.docx"
-    doc.save(output_path)
-    print(f"File created successfully at {output_path}")
+    try:
+        doc.save(output_path)
+        print(f"File created successfully at {output_path}")
+    except PermissionError:
+        output_path_v2 = "BAO_CAO_DO_AN_TOT_NGHIEP_PFT_v2.docx"
+        doc.save(output_path_v2)
+        print(f"File locked by Word. Created successfully at {output_path_v2}")
 
 if __name__ == "__main__":
     generate_report()

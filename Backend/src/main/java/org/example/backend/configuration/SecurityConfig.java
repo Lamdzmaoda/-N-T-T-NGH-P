@@ -29,7 +29,7 @@ import javax.crypto.spec.SecretKeySpec;
 @EnableMethodSecurity
 public class SecurityConfig {
     private final String[] PUBLIC_ENDPOINTS = {
-            "/users","/auth/token","/auth/introspect","/auth/logout","/auth/refresh", "/auth/outbound/**"
+            "/users","/auth/token","/auth/introspect","/auth/logout","/auth/refresh", "/auth/outbound/**", "/auth/verify-otp", "/auth/resend-otp"
     };
     private final String[] PUBLIC_GET_ENDPOINTS = {
             "/swagger-ui.html",

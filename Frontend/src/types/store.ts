@@ -32,6 +32,8 @@ export interface AuthState {
   fetchMe: () => Promise<void>;
   refresh: () => Promise<void>;
   loginWithGoogle: (code: string) => Promise<void>;
+  verifyOtp: (email: string, otp: string) => Promise<void>;
+  resendOtp: (email: string) => Promise<void>;
 }
 export interface AdminUserState {
   userPage: PageResponse<User> | null;

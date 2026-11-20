@@ -22,3 +22,10 @@
 - Follow `@shadcn/lint`: 100% semantic color tokens (`bg-background`, `bg-card`, `bg-muted`, `bg-primary`, `border-border`, etc.). Never use raw tailwind colors or arbitrary values.
 - Transactional entities (`Transaction`, `User`): Use Server-side Pagination with `Pageable`.
 - Master/Reference entities (`Category`): Use Client-side Pagination with instant search for zero-latency UX.
+
+## 5. Agent Workflow & Communication Protocol
+- **Explain Action Plan First (Bắt buộc giải thích các bước chuẩn bị làm)**:
+  - Trước khi cung cấp code, đề xuất chỉnh sửa hoặc thực hiện giải pháp, AI bắt buộc phải giải thích rõ ràng lộ trình các bước chuẩn bị làm (Mục tiêu -> Nguyên nhân -> Tuần tự từng bước 1, 2, 3...).
+  - Chỉ khi đã làm rõ các bước chuẩn bị làm thì mới đi vào chi tiết từng file, số dòng và code mẫu copy-pasteable.
+  - Tuyệt đối không bỏ qua bước giải thích kế hoạch hành động.
+
