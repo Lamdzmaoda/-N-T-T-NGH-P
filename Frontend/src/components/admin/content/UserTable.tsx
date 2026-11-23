@@ -133,7 +133,7 @@ export const UserTable = ({ onViewUser, onEditUser }: UserTableProps) => {
           ) : users.length === 0 ? (
             <TableRow>
               <TableCell colSpan={10} className="py-12 text-center text-muted-foreground">
-                Không tìm thấy tài khoản nào phù hợp
+                Không tìm thấy tài khoản nào
               </TableCell>
             </TableRow>
           ) : (

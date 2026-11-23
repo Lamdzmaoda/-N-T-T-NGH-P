@@ -54,6 +54,10 @@ public enum ErrorCode {
     INVALID_OTP(1033, "Mã OTP không chính xác hoặc đã hết hạn", HttpStatus.BAD_REQUEST),
     EMAIL_NOT_VERIFIED(1034, "Tài khoản chưa được kích hoạt qua email. Vui lòng xác thực mã OTP!", HttpStatus.FORBIDDEN),
     EMAIL_EXISTED(1035, "Email này đã được sử dụng trong hệ thống", HttpStatus.BAD_REQUEST),
+    SAVING_GOAL_NOT_FOUND(1036, "Mục tiêu tiết kiệm không tồn tại", HttpStatus.NOT_FOUND),
+    SAVING_GOAL_NAME_EXISTED(1037, "Tên mục tiêu tiết kiệm đã tồn tại", HttpStatus.BAD_REQUEST),
+    SAVING_WITHDRAW_EXCEEDED(1038, "Số tiền rút vượt quá số tiền hiện có trong mục tiêu tiết kiệm", HttpStatus.BAD_REQUEST),
+    SAVING_GOAL_ALREADY_FULFILLED(1039, "Mục tiêu này đã được hiện thực hóa chi tiêu trước đó", HttpStatus.BAD_REQUEST),
     ;
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {
