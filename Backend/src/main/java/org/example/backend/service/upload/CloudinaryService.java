@@ -56,4 +56,35 @@ public class CloudinaryService {
             throw new RuntimeException("Không thể tải ảnh lên dịch vụ lưu trữ đám mây!");
         }
     }
+    /**
+     * Upload ảnh hóa đơn / chứng từ thanh toán vào thư mục finflow/invoices
+     */
+    public String uploadInvoice(MultipartFile file, String userId) {
+        if (file == null || file.isEmpty()) {
+            throw new AppException(ErrorCode.INVALID_KEY);
+        }
+        String contentType = file.getContentType();
+
+        if (contentType == null || !ALLOWED_EXTENSIONS.contains(contentType)) {
+            throw new AppException(ErrorCode.INVALID_KEY);
+        }
+
+        try {
+            // Đặt tên định danh duy nhất cho từng hóa đơn theo UserId và UUID ngắn
+            String publicId = "invoice_" + userId + "_" + java.util.UUID.randomUUID().toString().substring(0, 8);
+            Map uploadParams = ObjectUtils.asMap(
+                    "folder", "finflow/invoices",
+                    "public_id", publicId,
+                    "resource_type", "auto"
+            );
+
+            Map uploadResult = cloudinary.uploader().upload(file.getBytes(), uploadParams);
+            String secureUrl = (String) uploadResult.get("secure_url");
+            log.info("✅ Upload hóa đơn thành công lên Cloudinary: {}", secureUrl);
+            return secureUrl;
+        } catch (IOException e) {
+            log.error("🔴 Lỗi upload hóa đơn lên Cloudinary: {}", e.getMessage());
+            throw new RuntimeException("Không thể tải ảnh hóa đơn lên dịch vụ lưu trữ đám mây!");
+        }
+    }
 }
