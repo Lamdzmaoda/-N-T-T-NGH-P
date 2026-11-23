@@ -4,10 +4,7 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
-import org.example.backend.dto.request.transaction.TransactionRequest;
-import org.example.backend.dto.request.transaction.TransactionUpdateRequest;
-import org.example.backend.dto.request.transaction.TransferRequest;
-import org.example.backend.dto.request.transaction.TransferUpdateRequest;
+import org.example.backend.dto.request.transaction.*;
 import org.example.backend.dto.response.transcation.TransactionResponse;
 import org.example.backend.entity.Category;
 import org.example.backend.entity.Transaction;
@@ -324,6 +321,28 @@ public class TransactionService {
         User user = authenticationService.getUserByContext();
         return transactionRepository.findByUserIdAndIsDeletedFalseOrderByTransactionDateDesc(user.getId(), page)
                 .map(transactionMapper::toTransactionResponse);
+    }
+    public Page<TransactionResponse> getTransactionsWithFilter(TransactionFilterRequest filter, Pageable pageable) {
+        User user = authenticationService.getUserByContext();
+
+        LocalDateTime startDateTime = filter.getStartDate() != null ? filter.getStartDate().atStartOfDay() : null;
+        LocalDateTime endDateTime = filter.getEndDate() != null ? filter.getEndDate().atTime(23, 59, 59, 999999999) : null;
+        String keyword = filter.getKeyword() != null && !filter.getKeyword().isBlank() ? filter.getKeyword().trim() : null;
+        String walletId = filter.getWalletId() != null && !filter.getWalletId().isBlank() ? filter.getWalletId().trim() : null;
+        String categoryId = filter.getCategoryId() != null && !filter.getCategoryId().isBlank() ? filter.getCategoryId().trim() : null;
+
+        return transactionRepository.findTransactionsWithFilters(
+                user.getId(),
+                walletId,
+                categoryId,
+                filter.getType(),
+                startDateTime,
+                endDateTime,
+                filter.getMinAmount(),
+                filter.getMaxAmount(),
+                keyword,
+                pageable
+        ).map(transactionMapper::toTransactionResponse);
     }
 
 

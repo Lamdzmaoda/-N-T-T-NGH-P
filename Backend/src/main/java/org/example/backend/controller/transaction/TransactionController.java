@@ -6,10 +6,7 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.example.backend.dto.ApiResponse;
-import org.example.backend.dto.request.transaction.TransactionRequest;
-import org.example.backend.dto.request.transaction.TransactionUpdateRequest;
-import org.example.backend.dto.request.transaction.TransferRequest;
-import org.example.backend.dto.request.transaction.TransferUpdateRequest;
+import org.example.backend.dto.request.transaction.*;
 import org.example.backend.dto.response.transcation.TransactionResponse;
 
 import org.example.backend.service.transaction.TransactionService;
@@ -17,6 +14,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 @RestController
@@ -95,6 +93,18 @@ public class TransactionController {
     public ApiResponse<Void> permanentDeleteTransaction(@PathVariable String id) {
         transactionService.permanentDeleteTransaction(id);
         return ApiResponse.<Void>builder()
+                .build();
+    }
+    // 4. Lấy danh sách giao dịch có phân trang và bộ lọc đa tiêu chí
+    @GetMapping
+    @Operation(summary = "Lấy danh sách giao dịch có phân trang và bộ lọc đa tiêu chí",
+            description = "Hỗ trợ lọc kết hợp theo ví, danh mục, loại thu/chi, khoảng ngày, khoảng tiền và từ khóa")
+    public ApiResponse<Page<TransactionResponse>> getTransactions(
+            @ModelAttribute TransactionFilterRequest filter,
+            @PageableDefault(size = 10, sort = "transactionDate", direction = Sort.Direction.DESC) Pageable pageable
+    ) {
+        return ApiResponse.<Page<TransactionResponse>>builder()
+                .result(transactionService.getTransactionsWithFilter(filter, pageable))
                 .build();
     }
 }
