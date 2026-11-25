@@ -36,3 +36,30 @@ export interface TransferRequest {
   transactionDate?: string;
   note?: string;
 }
+export interface TransactionUpdateRequest {
+  categoryId?: string;
+  transactionDate?: string;
+  note?: string;
+  imageUrl?: string;
+  walletId?: string;
+  amount?: number;
+}
+export interface TransferUpdateRequest {
+  sourceWalletId?: string;
+  destinationWalletId?: string;
+  amount?: number;
+  transactionDate?: string;
+  note?: string;
+}
+export interface TransactionFilterParams {
+  walletId?: string;
+  categoryId?: string;
+  type?: TransactionType | "";
+  startDate?: string;
+  endDate?: string;
+  minAmount?: string;
+  maxAmount?: string;
+  keyword?: string;
+  page?: number;
+  size?: number;
+}

@@ -3,9 +3,9 @@ import type { CashFlowResponse, CategoryExpenseResponse, DashboardSummaryRespons
 import type { BudgetProgressResponse, BudgetRequest } from "./budget";
 import type { Category } from "./category";
 import type { NotificationResponse } from "./notification";
-import type { Transaction, TransactionRequest, TransferRequest } from "./transaction";
+import type { Transaction, TransactionFilterParams, TransactionRequest, TransactionUpdateRequest, TransferRequest, TransferUpdateRequest } from "./transaction";
 import type { AdminUserFilterParams, PageResponse, User, UserUpdateRequest } from "./User";
-import type { TotalBalanceResponse, Wallet } from "./wallet";
+import type { TotalBalanceResponse, Wallet, WalletCreationRequest, WalletUpdateRequest } from "./wallet";
 
 export interface AuthState {
   token: string | null;
@@ -51,21 +51,41 @@ export interface AdminUserState {
  * Interface định nghĩa State & Actions cho WalletStore (Quản lý ví và số dư)
  */
 export interface WalletState {
-  wallets: Wallet[];                          // Danh sách ví của user
-  totalBalance: TotalBalanceResponse | null;  // Tổng số dư toàn bộ ví
-  loading: boolean;                           // Trạng thái đang gọi API
-  fetchTotalBalance: () => Promise<void>;     // Hàm gọi API lấy tổng số dư
-  fetchMyWallets: () => Promise<void>;        // Hàm gọi API lấy danh sách ví
+  wallets: Wallet[];
+  totalBalance: TotalBalanceResponse | null;
+  loading: boolean;
+  submitting: boolean;
+  fetchTotalBalance: () => Promise<void>;
+  fetchMyWallets: () => Promise<void>;
+  createWallet: (data: WalletCreationRequest) => Promise<boolean>;
+  updateWallet: (id: string, data: WalletUpdateRequest) => Promise<boolean>;
+  deleteWallet: (id: string) => Promise<boolean>;
+  toggleIncludeInTotal: (wallet: Wallet) => Promise<boolean>;
 }
 /**
  * Interface định nghĩa State & Actions cho TransactionStore (Quản lý giao dịch)
  */
 export interface TransactionState {
-  recentTransactions: Transaction[];          // Danh sách 5 giao dịch gần đây cho Dashboard
-  loading: boolean;                           // Trạng thái đang tải dữ liệu
-  fetchRecentTransactions: () => Promise<void>; // Lấy 5 giao dịch gần nhất
-  createTransaction: (data: TransactionRequest) => Promise<void>; // Tạo thu/chi mới
-  transferMoney: (data: TransferRequest) => Promise<void>;         // Chuyển tiền
+  recentTransactions: Transaction[];
+  transactionPage: PageResponse<Transaction> | null;
+  trashTransactions: Transaction[];
+  filters: TransactionFilterParams;
+  loading: boolean;
+  submitting: boolean;
+  exporting: boolean;
+  setFilters: (newFilters: Partial<TransactionFilterParams>) => void;
+  resetFilters: () => void;
+  fetchRecentTransactions: () => Promise<void>;
+  fetchTransactions: (pageOverride?: number) => Promise<void>;
+  createTransaction: (data: TransactionRequest) => Promise<void>;
+  transferMoney: (data: TransferRequest) => Promise<void>;
+  updateTransaction: (id: string, data: TransactionUpdateRequest) => Promise<boolean>;
+  updateTransfer: (id: string, data: TransferUpdateRequest) => Promise<boolean>;
+  deleteTransaction: (id: string) => Promise<boolean>;
+  fetchTrashTransactions: () => Promise<void>;
+  restoreTransaction: (id: string) => Promise<boolean>;
+  permanentDeleteTransaction: (id: string) => Promise<boolean>;
+  exportExcel: () => Promise<void>;
 }
 export interface CategoryState {
   categories: Category[];
