@@ -27,7 +27,21 @@ public interface TransactionRepository extends JpaRepository<Transaction, String
             String userId, String walletId, Pageable pageable
     );
     List<Transaction> findByUserIdAndIsDeletedTrueOrderByDeletedAtDesc(String  userId);
-
+    // Lấy giao dịch phục vụ Dashboard/Analytics: chỉ lấy từ các ví đang hoạt động và có bật includeInTotal = true
+    @Query("""
+        SELECT t FROM Transaction t
+        WHERE t.user.id = :userId
+          AND (t.isDeleted IS NULL OR t.isDeleted = false)
+          AND (t.wallet.isActive IS NULL OR t.wallet.isActive = true)
+          AND t.wallet.includeInTotal = true
+          AND t.transactionDate BETWEEN :startDate AND :endDate
+        ORDER BY t.transactionDate DESC
+    """)
+    List<Transaction> findDashboardTransactionsBetween(
+            @Param("userId") String userId,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate
+    );
     // Truy vấn lọc giao dịch đa tiêu chí tuân thủ Rule 3 (isDeleted = false, ngoặc đơn bao bọc)
     @Query("""
         SELECT t FROM Transaction t

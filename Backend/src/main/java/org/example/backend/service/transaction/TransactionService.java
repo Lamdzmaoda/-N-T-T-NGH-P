@@ -19,12 +19,14 @@ import org.example.backend.repository.categories.CategoryRepository;
 import org.example.backend.repository.transaction.TransactionRepository;
 import org.example.backend.repository.wallet.WalletRepository;
 import org.example.backend.service.auth.AuthenticationService;
+import org.example.backend.service.report.ExcelExportService;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -40,6 +42,7 @@ public class TransactionService {
     AuthenticationService authenticationService;
     TransactionMapper transactionMapper;
     ApplicationEventPublisher eventPublisher;
+    ExcelExportService excelExportService;
 
     @Transactional
     public TransactionResponse createTransaction(TransactionRequest request) {
@@ -154,9 +157,9 @@ public class TransactionService {
         Wallet wallet = transaction.getWallet();
         BigDecimal amount = transaction.getAmount();
 
-        if(transaction.getType() == TransactionType.EXPENSE) {
+        if (transaction.getType() == TransactionType.EXPENSE) {
             wallet.debit(amount);
-        }else  if(transaction.getType() == TransactionType.INCOME) {
+        } else if (transaction.getType() == TransactionType.INCOME) {
             wallet.credit(amount);
         }
         walletRepository.save(wallet);
@@ -164,9 +167,10 @@ public class TransactionService {
         transaction.setIsDeleted(false);
         transaction.setIsDeleted(null);
 
-        return  transactionMapper.toTransactionResponse(transactionRepository.save(transaction));
+        return transactionMapper.toTransactionResponse(transactionRepository.save(transaction));
 
     }
+
     // 3. Xóa vĩnh viễn khỏi Database
     @Transactional
     public void permanentDeleteTransaction(String id) {
@@ -176,12 +180,14 @@ public class TransactionService {
                 .orElseThrow(() -> new AppException(ErrorCode.TRANSACTION_NOT_FOUND));
         transactionRepository.delete(transaction);
     }
+
     // 4. Lấy danh sách giao dịch trong thùng rác
     public List<TransactionResponse> getTrashTransactions() {
         User user = authenticationService.getUserByContext();
         return transactionRepository.findByUserIdAndIsDeletedTrueOrderByDeletedAtDesc(user.getId())
                 .stream().map(transactionMapper::toTransactionResponse).toList();
     }
+
     @Transactional
     public TransactionResponse updateTransaction(String id, TransactionUpdateRequest request) {
         User user = authenticationService.getUserByContext();
@@ -322,6 +328,7 @@ public class TransactionService {
         return transactionRepository.findByUserIdAndIsDeletedFalseOrderByTransactionDateDesc(user.getId(), page)
                 .map(transactionMapper::toTransactionResponse);
     }
+
     public Page<TransactionResponse> getTransactionsWithFilter(TransactionFilterRequest filter, Pageable pageable) {
         User user = authenticationService.getUserByContext();
 
@@ -343,6 +350,22 @@ public class TransactionService {
                 keyword,
                 pageable
         ).map(transactionMapper::toTransactionResponse);
+    }
+
+    public byte[] exportTransactionsToExcel(TransactionFilterRequest filter) throws IOException {
+        User user = authenticationService.getUserByContext();
+        LocalDateTime startDateTime = filter.getStartDate() != null ? filter.getStartDate().atStartOfDay() : null;
+        LocalDateTime endDateTime = filter.getEndDate() != null ? filter.getEndDate().atTime(23, 59, 59, 999999999) : null;
+        String keyword = filter.getKeyword() != null && !filter.getKeyword().isBlank() ? filter.getKeyword().trim() : null;
+        String walletId = filter.getWalletId() != null && !filter.getWalletId().isBlank() ? filter.getWalletId().trim() : null;
+        String categoryId = filter.getCategoryId() != null && !filter.getCategoryId().isBlank() ? filter.getCategoryId().trim() : null;
+        // Lấy toàn bộ giao dịch thỏa mãn bộ lọc (tối đa 10,000 dòng để xuất báo cáo)
+        Pageable unpaged = org.springframework.data.domain.PageRequest.of(0, 10000, org.springframework.data.domain.Sort.by("transactionDate").descending());
+        List<Transaction> transactions = transactionRepository.findTransactionsWithFilters(
+                user.getId(), walletId, categoryId, filter.getType(),
+                startDateTime, endDateTime, filter.getMinAmount(), filter.getMaxAmount(), keyword, unpaged
+        ).getContent();
+        return excelExportService.exportTransactions(transactions, user.getUsername());
     }
 
 

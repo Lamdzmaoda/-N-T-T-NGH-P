@@ -92,6 +92,19 @@ public class WalletService {
 
         return  walletMapper.toWalletResponse(walletRepository.save(wallet));
     }
+    @Transactional
+    public void transferState(String id){
+        User user = authenticationService.getUserByContext();
+
+        Wallet wallet = walletRepository.findByIdAndUserIdAndIsActiveTrue(id, user.getId())
+                .orElseThrow(() -> new AppException(ErrorCode.WALLET_NOT_FOUND));
+        if(wallet.getIncludeInTotal() != null && wallet.getIncludeInTotal()){
+            wallet.setIncludeInTotal(false);
+        }else {
+            wallet.setIncludeInTotal(true);
+        }
+
+    }
 
     @Transactional
     public void deleteWallet(String id) {

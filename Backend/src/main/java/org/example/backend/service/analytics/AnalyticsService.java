@@ -47,9 +47,9 @@ public class AnalyticsService {
         LocalDateTime prevEnd = prevYearMonth.atEndOfMonth().atTime(23, 59, 59, 999999999);
 
         List<Transaction> currentTxs = transactionRepository
-                .findByUserIdAndIsDeletedIsFalseAndTransactionDateBetweenOrderByTransactionDateDesc(user.getId(), currentStart, currentEnd);
+                .findDashboardTransactionsBetween(user.getId(), currentStart, currentEnd);
         List<Transaction> prevTsx = transactionRepository
-                .findByUserIdAndIsDeletedIsFalseAndTransactionDateBetweenOrderByTransactionDateDesc(user.getId(), prevStart, prevEnd);
+                .findDashboardTransactionsBetween(user.getId(), prevStart, prevEnd);
 
         BigDecimal currentIncome = calculateTotal(currentTxs, TransactionType.INCOME);
         BigDecimal currentExpense = calculateTotal(currentTxs, TransactionType.EXPENSE);
@@ -88,7 +88,7 @@ public class AnalyticsService {
         LocalDateTime currentStart = LocalDateTime.of(year, 1, 1, 0, 0, 0);
         LocalDateTime currentEnd = LocalDateTime.of(year, 12, 31, 23, 59, 59, 999999999);
 
-        List<Transaction> yearTxs = transactionRepository.findByUserIdAndIsDeletedIsFalseAndTransactionDateBetweenOrderByTransactionDateDesc(user.getId(), currentStart, currentEnd);
+        List<Transaction> yearTxs = transactionRepository.findDashboardTransactionsBetween(user.getId(), currentStart, currentEnd);
 
         List<CashFlowResponse> result = new ArrayList<>();
 
@@ -135,7 +135,7 @@ public class AnalyticsService {
             end = LocalDateTime.of(queryYear, 12, 31, 23, 59, 59, 999999999);
         }
 
-        List<Transaction> transactions = transactionRepository.findByUserIdAndIsDeletedIsFalseAndTransactionDateBetweenOrderByTransactionDateDesc(user.getId(), start, end);
+        List<Transaction> transactions = transactionRepository.findDashboardTransactionsBetween(user.getId(), start, end);
 
         List<Transaction> expenseTxs = transactions.stream()
                 .filter(tx -> tx.getType() == TransactionType.EXPENSE && tx.getCategory() != null).toList();

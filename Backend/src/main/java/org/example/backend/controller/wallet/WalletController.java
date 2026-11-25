@@ -103,6 +103,12 @@ public class WalletController {
         walletService.restoreWallet(id);
         return ApiResponse.<Void>builder().build();
     }
+    @PatchMapping("/{id}/transferState")
+    @Operation(summary = "Tính vào tổng tài sản", description = "Tính vào tổng tài sản")
+    public ApiResponse<Void> transferState(@PathVariable String id) {
+        walletService.transferState(id);
+        return  ApiResponse.<Void>builder().build();
+    }
     @DeleteMapping("/trash/{id}")
     @Operation(summary = "Xóa vĩnh viễn ví khỏi thùng rác")
     public ApiResponse<Void> permanentDeleteWallet(@PathVariable String id) {

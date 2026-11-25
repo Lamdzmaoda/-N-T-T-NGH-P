@@ -14,8 +14,13 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.io.IOException;
 import java.util.List;
 @RestController
 @RequestMapping("/transactions")
@@ -55,15 +60,6 @@ public class TransactionController {
     public ApiResponse<List<TransactionResponse>> getRecentTransactions() {
         return ApiResponse.<List<TransactionResponse>>builder()
                 .result(transactionService.getRecentTransaction())
-                .build();
-    }
-    // 4. Lấy danh sách giao dịch có phân trang
-    @GetMapping
-    public ApiResponse<Page<TransactionResponse>> getTransactions(
-            @PageableDefault(size = 10, sort = "transactionDate", direction = Sort.Direction.DESC) Pageable pageable
-    ) {
-        return ApiResponse.<Page<TransactionResponse>>builder()
-                .result(transactionService.getTransaction(pageable))
                 .build();
     }
     // 5. Xóa giao dịch (hoàn lại số dư)
@@ -106,5 +102,15 @@ public class TransactionController {
         return ApiResponse.<Page<TransactionResponse>>builder()
                 .result(transactionService.getTransactionsWithFilter(filter, pageable))
                 .build();
+    }
+    @GetMapping("/export")
+    @Operation(summary = "Xuất danh sách giao dịch ra file Excel (.xlsx)",
+            description = "Tải về file Excel chứa toàn bộ lịch sử giao dịch (có thể kèm bộ lọc)")
+    public ResponseEntity<byte[]> exportToExcel(@ModelAttribute TransactionFilterRequest filter) throws IOException {
+        byte[] excelBytes = transactionService.exportTransactionsToExcel(filter);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"sao_ke_giao_dich_finflow.xlsx\"")
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(excelBytes);
     }
 }
