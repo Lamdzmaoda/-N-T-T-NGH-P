@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { Button } from "@/components/ui/button"
 import { Plus } from "lucide-react"
 import { useAuthStore } from "@/stores/useAuthStore"
-import AddTransactionModal from '../dashboard/dialog/AddTransactionModal'
+import AddTransactionModal from '../transaction/dialog/AddTransactionModal'
 export function DashboardGreeting() {
   const user = useAuthStore((s) => s.user)
   const username = user?.username || "Minh"

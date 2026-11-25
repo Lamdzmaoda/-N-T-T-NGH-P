@@ -10,6 +10,7 @@ import AdminCategoryListPage from "./pages/Admin/AdminCategoryListPage";
 import OAuth2CallbackPage from "./pages/auth/OAuth2CallbackPage";
 import ProfilePage from "./pages/User/ProfilePage";
 import WalletsPage from "./pages/User/WalletsPage";
+import TransactionsPage from "./pages/User/TransactionsPage";
 
 function App() {
   return (
@@ -27,7 +28,8 @@ function App() {
           {/* private routes */}
           <Route element={<ProtectedRoute />}>
               <Route path="/" element={<HomePage />} />
-               <Route path="/wallets" element={<WalletsPage />} />
+              <Route path="/wallets" element={<WalletsPage />} />
+              <Route path="/transactions" element={<TransactionsPage />} /> 
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/admin" element={<AdminLayout />}>
                 <Route index element={<Navigate to="/admin/users" replace />} />

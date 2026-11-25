@@ -151,7 +151,7 @@ public class TransactionService {
     public TransactionResponse restoreTransaction(String id) {
         User user = authenticationService.getUserByContext();
         Transaction transaction = transactionRepository.findById(id)
-                .filter(t -> t.getUser().equals(user.getId()) &&
+                .filter(t -> t.getUser().getId().equals(user.getId()) &&
                         Boolean.TRUE.equals(t.getIsDeleted()))
                 .orElseThrow(() -> new AppException(ErrorCode.TRANSACTION_NOT_FOUND));
         Wallet wallet = transaction.getWallet();
@@ -161,11 +161,18 @@ public class TransactionService {
             wallet.debit(amount);
         } else if (transaction.getType() == TransactionType.INCOME) {
             wallet.credit(amount);
+        } else if (transaction.getType() == TransactionType.TRANSFER) {
+            wallet.debit(amount);
+            Wallet destWallet = transaction.getDestinationWallet();
+            if(destWallet != null) {
+                destWallet.credit(amount);
+                walletRepository.save(destWallet);
+            }
         }
         walletRepository.save(wallet);
 
         transaction.setIsDeleted(false);
-        transaction.setIsDeleted(null);
+        transaction.setDeletedAt(null);
 
         return transactionMapper.toTransactionResponse(transactionRepository.save(transaction));
 
