@@ -12,7 +12,9 @@ import org.example.backend.exception.AppException;
 import org.example.backend.exception.ErrorCode;
 import org.example.backend.mapper.categories.CategoryMapper;
 import org.example.backend.repository.auth.UserRepository;
+import org.example.backend.repository.budget.BudgetRepository;
 import org.example.backend.repository.categories.CategoryRepository;
+import org.example.backend.repository.transaction.TransactionRepository;
 import org.example.backend.service.auth.AuthenticationService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -28,6 +30,8 @@ public class CategoryService {
     CategoryRepository categoryRepository;
     CategoryMapper categoryMapper;
     AuthenticationService authenticationService;
+    TransactionRepository transactionRepository;
+    BudgetRepository budgetRepository;
 
     public CategoryResponse createCategory(CategoryRequest request) {
         var user = authenticationService.getUserByContext();
@@ -106,12 +110,21 @@ public class CategoryService {
         return  categoryMapper.toCategoryResponse(categoryRepository.save(category));
     }
     // 1. User Xóa mềm (Ẩn danh mục)
+    // 1. User Xóa danh mục (Hybrid Delete: chưa dùng -> xóa hẳn, đã dùng -> ẩn mềm)
     public void deleteCategory(String id) {
         var user = authenticationService.getUserByContext();
         var category = categoryRepository.findByIdAndUserIdAndIsDefaultFalse(id, user.getId())
                 .orElseThrow(() -> new AppException(ErrorCode.CATEGORY_NOT_FOUND));
-        category.setIsActive(false);
-        categoryRepository.save(category);
+
+        boolean hasTransactions = transactionRepository.existsByCategoryId(id);
+        boolean hasBudgets = budgetRepository.existsByCategoryId(id);
+
+        if (!hasTransactions && !hasBudgets) {
+            categoryRepository.delete(category);
+        } else {
+            category.setIsActive(false);
+            categoryRepository.save(category);
+        }
     }
     // 2. User Khôi phục danh mục đã ẩn
     public void restoreCategory(String id) {

@@ -26,6 +26,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, String
     Page<Transaction> findByUserIdAndIsDeletedIsFalseAndWalletIdOrderByTransactionDateDesc(
             String userId, String walletId, Pageable pageable
     );
+    boolean existsByCategoryId(String categoryId);
     List<Transaction> findByUserIdAndIsDeletedTrueOrderByDeletedAtDesc(String  userId);
     // Lấy giao dịch phục vụ Dashboard/Analytics: chỉ lấy từ các ví đang hoạt động và có bật includeInTotal = true
     @Query("""

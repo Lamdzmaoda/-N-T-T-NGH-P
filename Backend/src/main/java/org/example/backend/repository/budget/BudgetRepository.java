@@ -19,5 +19,7 @@ public interface BudgetRepository extends JpaRepository<Budget,String> {
 
     boolean existsByUserIdAndCategoryIdAndIsDeletedFalseAndMonthAndYear(String user_id, String category_id, Integer month, Integer year);
 
+    boolean existsByCategoryId(String categoryId);
+
     List<Budget> findByUserIdAndIsDeletedTrueOrderByDeletedAtDesc(String userId);
 }
