@@ -1,7 +1,7 @@
 
 import type { CashFlowResponse, CategoryExpenseResponse, DashboardSummaryResponse } from "./analytics";
 import type { BudgetProgressResponse, BudgetRequest } from "./budget";
-import type { Category } from "./category";
+import type { Category, CategoryRequest } from "./category";
 import type { NotificationResponse } from "./notification";
 import type { Transaction, TransactionFilterParams, TransactionRequest, TransactionUpdateRequest, TransferRequest, TransferUpdateRequest } from "./transaction";
 import type { AdminUserFilterParams, PageResponse, User, UserUpdateRequest } from "./User";
@@ -90,7 +90,11 @@ export interface TransactionState {
 export interface CategoryState {
   categories: Category[];
   loading: boolean;
-  fetchAllCategories: () => Promise<void>;
+  submitting: boolean;
+  fetchAllCategories: (force?: boolean) => Promise<void>;
+  createCategory: (data: CategoryRequest) => Promise<boolean>;
+  updateCategory: (id: string, data: CategoryRequest) => Promise<boolean>;
+  deleteCategory: (id: string) => Promise<boolean>;
 }
 
 export interface AnalyticsState {

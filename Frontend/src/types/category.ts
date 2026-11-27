@@ -8,3 +8,9 @@ export interface Category {
   isDefault?: boolean;
   isActive: boolean;
 }
+export interface CategoryRequest {
+  name: string;
+  type: CategoryType;
+  icon?: string;
+  color?: string;
+}
